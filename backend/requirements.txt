@@ -1,0 +1,14 @@
+Django>=5.0
+djangorestframework
+psycopg2-binary
+djangorestframework-simplejwt
+Pillow
+django-cors-headers
+django-filter
+pandas
+openpyxl
+rapidfuzz
+fastapi
+uvicorn
+python-multipart
+httpx

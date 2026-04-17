@@ -1,0 +1,4 @@
+PROD:[]
+ESTRELLA:[{'nombre': 'Guantes Nitrilo Caja x100'}]
+CATEG:[]
+PROV:[]

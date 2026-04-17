@@ -1,0 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    body {
+        @apply bg-[#F7F7F7] text-black antialiased font-sans;
+    }
+    
+    /* Custom Scrollbar for Webkit */
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+        @apply bg-transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+        @apply bg-slate-300 rounded-full;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        @apply bg-slate-400;
+    }
+}

@@ -1,0 +1,77 @@
+[
+  {
+    "id": "henry-schein",
+    "name": "Henry Schein",
+    "base_url": "https://www.henryschein.es",
+    "scrape_url": "https://www.henryschein.es/es-es/dentalclinica/c/browsesupplies",
+    "categoria": "Laboratorio",
+    "selectors": {
+      "product_item": "li.product",
+      "name": ".product-name a",
+      "price": ".product-price .amount",
+      "sku": ".product-name small strong",
+      "brand": ".brand",
+      "image": "img[src]"
+    }
+  },
+  {
+    "id": "proclinic",
+    "name": "Proclinic",
+    "base_url": "https://www.proclinic.es",
+    "scrape_url": "https://www.proclinic.es/tienda/clinica.html",
+    "categoria": "Laboratorio",
+    "selectors": {
+      "product_item": ".product-card",
+      "name": ".product-card__name a",
+      "price": ".product-card__price--final",
+      "sku": ".product-card__details span:last-child",
+      "brand": ".product-card__manufacturer",
+      "image": "img[src]"
+    }
+  },
+  {
+    "id": "dvd-dental",
+    "name": "DVD Dental",
+    "base_url": "https://www.dvd-dental.com",
+    "scrape_url": "https://www.dvd-dental.com/clinica/",
+    "categoria": "Laboratorio",
+    "selectors": {
+      "product_item": ".product-item, .item",
+      "name": ".product-name, .name a",
+      "price": ".price, .product-price",
+      "sku": "[data-sku], .ref",
+      "brand": ".brand",
+      "image": "img[src]"
+    }
+  },
+  {
+    "id": "zimvie",
+    "name": "ZimVie",
+    "base_url": "https://www.zimvie.com",
+    "scrape_url": "https://production.zimvie.eu/es/shop/category/implant-system-1",
+    "categoria": "Implantologia",
+    "selectors": {
+      "product_item": ".product-card, .oe_product",
+      "name": ".product-title, h6 a",
+      "price": ".oe_currency_value, .price_id",
+      "sku": "[data-product-id], .sku",
+      "brand": ".brand",
+      "image": "img[src]"
+    }
+  },
+  {
+    "id": "straumann",
+    "name": "Straumann",
+    "base_url": "https://shop.straumann.com",
+    "scrape_url": "https://shop.straumann.com/es/es_es/Implantes/c/cat_stmn_implsol",
+    "categoria": "Implantologia",
+    "selectors": {
+      "product_item": ".product, .item-card",
+      "name": ".product-name, .title a",
+      "price": ".price, .amount",
+      "sku": ".product-sku, [data-sku]",
+      "brand": ".brand",
+      "image": "img[src]"
+    }
+  }
+]
