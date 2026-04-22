@@ -80,7 +80,21 @@ const MarketplaceProductCard: React.FC<MarketplaceProductCardProps> = ({ product
                   title={prov.proveedor.nombre}
                 >
                   {prov.proveedor.logo ? (
-                     <img src={prov.proveedor.logo} alt={prov.proveedor.nombre} className="w-full h-full object-contain p-0.5" />
+                     <img 
+                       src={prov.proveedor.logo} 
+                       alt={prov.proveedor.nombre} 
+                       className="w-full h-full object-contain p-0.5" 
+                       onError={(e) => {
+                         const target = e.target as HTMLImageElement;
+                         if (target.src.includes('clearbit.com')) {
+                            const domain = target.src.split('clearbit.com/')[1];
+                            target.onerror = null; // Prevent infinite loops
+                            target.src = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+                         } else {
+                            target.style.display = 'none';
+                         }
+                       }} 
+                     />
                   ) : (
                      <Building2 size={12} className="text-slate-400" />
                   )}

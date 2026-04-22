@@ -85,7 +85,16 @@ class ProveedorOfertaSerializer(ModelSerializer):
                 'Dentaid': 'dentaid.com',
                 'Normon': 'normon.es',
             }
-            domain = domain_map.get(obj.proveedor.nombre, f"{obj.proveedor.nombre.lower().replace(' ', '')}.com")
+            
+            if obj.proveedor.nombre in domain_map:
+                domain = domain_map[obj.proveedor.nombre]
+            elif obj.proveedor.contacto_email and '@' in obj.proveedor.contacto_email:
+                domain = obj.proveedor.contacto_email.split('@')[-1].strip().split(' ')[0]
+            elif obj.proveedor.url_web:
+                domain = obj.proveedor.url_web.replace('https://', '').replace('http://', '').replace('www.', '').split('/')[0]
+            else:
+                domain = f"{obj.proveedor.nombre.lower().replace(' ', '')}.com"
+
             logo_url = f"https://logo.clearbit.com/{domain}"
             
         return {
@@ -95,6 +104,7 @@ class ProveedorOfertaSerializer(ModelSerializer):
             'contacto_nombre': obj.proveedor.contacto_nombre,
             'contacto_email': obj.proveedor.contacto_email,
             'contacto_telefono': obj.proveedor.contacto_telefono,
+            'url_web': obj.proveedor.url_web,
         }
 
 

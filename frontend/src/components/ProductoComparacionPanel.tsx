@@ -193,20 +193,6 @@ const ProductoComparacionPanel: React.FC<ProductoComparacionPanelProps> = ({ pro
 
                     {/* Actions B2B Flow */}
                     <div className="flex items-center gap-2.5 shrink-0 border-t sm:border-t-0 border-slate-100 pt-3 sm:pt-0">
-                       
-                       {/* E-Commerce fallback secondary */}
-                       {oficial.url_compra && (
-                           <a
-                             href={oficial.url_compra}
-                             target="_blank"
-                             rel="noopener noreferrer"
-                             className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-full transition-colors mr-2 border border-transparent hover:border-slate-200"
-                             title="Ver en e-commerce"
-                           >
-                              <ExternalLink size={16} />
-                           </a>
-                       )}
-
                        {/* Direct Call */}
                        <a 
                           href={oficial.contacto_telefono ? `tel:${oficial.contacto_telefono}` : '#'}
@@ -222,7 +208,7 @@ const ProductoComparacionPanel: React.FC<ProductoComparacionPanelProps> = ({ pro
 
                        {/* Direct Mail (Primary) */}
                        <a 
-                          href={oficial.contacto_email ? `mailto:${oficial.contacto_email}?subject=Asesoramiento sobre ${encodeURIComponent(producto.nombre)} (Red DentalQuality)` : '#'}
+                          href={oficial.contacto_email ? `mailto:${oficial.contacto_email}?subject=Interés en producto: ${producto.nombre}` : '#'}
                           className={`inline-flex items-center justify-center gap-2 px-4 py-2 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-all shadow-sm ${
                             oficial.contacto_email 
                             ? 'bg-klein-600 text-white hover:bg-klein-700 shadow-klein-600/20'
@@ -231,6 +217,22 @@ const ProductoComparacionPanel: React.FC<ProductoComparacionPanelProps> = ({ pro
                           onClick={(e) => !oficial.contacto_email && e.preventDefault()}
                        >
                           <Mail size={14} /> Contactar
+                       </a>
+
+                       {/* E-Commerce fallback secondary */}
+                       <a
+                           href={oficial.url_compra || oficial.url_web || '#'}
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ml-1 border ${
+                               oficial.url_compra || oficial.url_web
+                               ? 'text-slate-400 hover:text-slate-700 hover:bg-slate-50 border-transparent hover:border-slate-200'
+                               : 'text-slate-300 bg-slate-50 border-slate-100 cursor-not-allowed'
+                           }`}
+                           title="Ver suministro en origen"
+                           onClick={(e) => !(oficial.url_compra || oficial.url_web) && e.preventDefault()}
+                       >
+                          <ExternalLink size={16} />
                        </a>
                     </div>
                   </div>

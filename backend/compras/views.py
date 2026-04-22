@@ -271,16 +271,11 @@ class IngestaProductosView(APIView):
     Payload — list of objects:
     [
       {
-        "nombre":           "Guantes de Nitrilo Azul Caja 100u",
+        "linea_producto":   "Guantes de Nitrilo",
         "marca":            "Medicaline",
         "categoria_name":   "Consumibles",
-        "descripcion":      "Guantes sin polvo, caja 100u...",
-        "imagen_url":       "https://cdn.proveedor.es/img/guante.jpg",
         "proveedor_nombre": "Henry Schein",
-        "sku":              "HS-GNT-NITRILE-L-BLU-100",
-        "precio":           "5.20",
-        "url_compra":       "https://tienda.proveedor.es/producto/123",
-        "stock_status":     "in_stock"
+        "url_compra_especifica": "https://tienda.proveedor.es/producto/123"
       }
     ]
 
@@ -331,14 +326,14 @@ class IngestaProductosView(APIView):
 
         # ── 3. Process each item ─────────────────────────────────────────────
         for idx, item in enumerate(items):
-            pfx = '[idx=%d sku=%s]' % (idx, item.get('sku', '?'))
+            pfx = '[idx=%d]' % (idx)
             try:
                 # Proveedor
                 proveedor = _resolve_proveedor(item)
                 if not proveedor:
                     msg = 'No se pudo resolver el Proveedor (proporciona proveedor_id o proveedor_nombre).'
                     ingestion_log.warning('%s SKIP — %s', pfx, msg)
-                    errors.append({'index': idx, 'sku': item.get('sku'), 'error': msg})
+                    errors.append({'index': idx, 'error': msg})
                     continue
 
                 # Categoria
@@ -346,32 +341,27 @@ class IngestaProductosView(APIView):
                 if not categoria:
                     msg = 'No se pudo resolver la Categoria (proporciona categoria_id o categoria_name).'
                     ingestion_log.warning('%s SKIP — %s', pfx, msg)
-                    errors.append({'index': idx, 'sku': item.get('sku'), 'error': msg})
+                    errors.append({'index': idx, 'error': msg})
                     continue
 
                 # Required fields
-                sku = item.get('sku', '').strip()
-                if not sku:
-                    msg = "Falta el campo 'sku'."
+                nombre_linea = (item.get('linea_producto') or item.get('nombre_linea') or item.get('nombre') or '').strip()
+                if not nombre_linea:
+                    msg = "Falta el campo 'linea_producto', 'nombre_linea' o 'nombre'."
                     ingestion_log.warning('%s SKIP — %s', pfx, msg)
-                    errors.append({'index': idx, 'sku': None, 'error': msg})
-                    continue
-
-                nombre = item.get('nombre', '').strip()
-                if not nombre:
-                    msg = "Falta el campo 'nombre'."
-                    ingestion_log.warning('%s SKIP — %s', pfx, msg)
-                    errors.append({'index': idx, 'sku': sku, 'error': msg})
+                    errors.append({'index': idx, 'error': msg})
                     continue
 
                 marca = item.get('marca', '').strip()
+                url_compra = item.get('url_compra_especifica', item.get('url_compra', '')).strip()
 
-                # Parent Producto
+                # Parent Producto (Unified Line)
                 producto, prod_created = Producto.objects.get_or_create(
-                    nombre=nombre,
+                    nombre=nombre_linea,
                     marca=marca,
                     defaults={
                         'categoria': categoria,
+                        'linea_producto': nombre_linea,
                         'descripcion': item.get('descripcion', ''),
                         'imagen_url': item.get('imagen_url', ''),
                     },
@@ -383,26 +373,29 @@ class IngestaProductosView(APIView):
 
                 if prod_created:
                     ingestion_log.info(
-                        '%s NEW Producto id=%s "%s" [%s] cat="%s"',
-                        pfx, producto.id, nombre, marca, categoria.nombre,
+                        '%s NEW Linea Producto id=%s "%s" [%s] cat="%s"',
+                        pfx, producto.id, nombre_linea, marca, categoria.nombre,
                     )
 
-                # ProveedorOferta
+                # ProveedorOferta (B2B Supply Point)
+                # Since we stripped SKUs logically, we generate a unique pseudo-sku or identifier for the supplier's supply of this product
+                pseudo_sku = f"DQ-LINE-{proveedor.id}-{producto.id}"
+                
                 oferta, was_created = ProveedorOferta.objects.update_or_create(
                     proveedor=proveedor,
-                    sku=sku,
+                    producto=producto,  # Ensure we only have one offer per supplier per product line
                     defaults={
-                        'producto': producto,
-                        'precio': item.get('precio', 0),
-                        'url_compra': item.get('url_compra', ''),
-                        'stock_status': item.get('stock_status', 'unknown'),
+                        'sku': pseudo_sku,
+                        'precio': 0, # Neutral
+                        'url_compra': url_compra,
+                        'stock_status': item.get('stock_status', 'in_stock'),
                     },
                 )
 
                 action = 'CREATED' if was_created else 'UPDATED'
                 ingestion_log.info(
-                    '%s %s ProveedorOferta id=%s proveedor="%s" precio=%s',
-                    pfx, action, oferta.id, proveedor.nombre, item.get('precio'),
+                    '%s %s Supply Point id=%s proveedor="%s"',
+                    pfx, action, oferta.id, proveedor.nombre,
                 )
 
                 if was_created:
@@ -412,7 +405,6 @@ class IngestaProductosView(APIView):
 
                 results.append({
                     'index': idx,
-                    'sku': sku,
                     'producto_id': producto.id,
                     'oferta_id': oferta.id,
                     'action': action.lower(),
@@ -422,7 +414,7 @@ class IngestaProductosView(APIView):
 
             except Exception as exc:
                 ingestion_log.exception('%s UNEXPECTED ERROR: %s', pfx, exc)
-                errors.append({'index': idx, 'sku': item.get('sku'), 'error': str(exc)})
+                errors.append({'index': idx, 'error': str(exc)})
 
         # ── 4. Summary ───────────────────────────────────────────────────────
         ingestion_log.info(

@@ -73,5 +73,65 @@
       "brand": ".brand",
       "image": "img[src]"
     }
+  },
+  {
+    "id": "ipd",
+    "name": "IPD",
+    "base_url": "https://www.ipd2004.com",
+    "scrape_url": "https://www.ipd2004.com/es/catalogo",
+    "categoria": "Implantologia",
+    "selectors": {
+      "product_item": ".product-item, .catalog-item",
+      "name": ".product-title, .title",
+      "url": "a"
+    }
+  },
+  {
+    "id": "inibsa",
+    "name": "Inibsa",
+    "base_url": "https://inibsa.es",
+    "scrape_url": "https://inibsa.es/dental/",
+    "categoria": "Laboratorio",
+    "selectors": {
+      "product_item": ".portfolio-item, .product",
+      "name": ".elementor-heading-title",
+      "url": "a"
+    }
+  },
+  {
+    "id": "klockner",
+    "name": "Botiss (Klockner)",
+    "base_url": "https://www.klockner.es",
+    "scrape_url": "https://www.klockner.es/sistemas-de-implantes/",
+    "categoria": "Implantologia",
+    "selectors": {
+      "product_item": ".sistema-implante, .product",
+      "name": "h3",
+      "url": "a"
+    }
+  },
+  {
+    "id": "dentaid",
+    "name": "Dentaid",
+    "base_url": "https://www.dentaid.es",
+    "scrape_url": "https://www.dentaid.es/productos",
+    "categoria": "Laboratorio",
+    "selectors": {
+      "product_item": ".card-producto, .product-item",
+      "name": "h3, .title",
+      "url": "a"
+    }
+  },
+  {
+    "id": "endovations",
+    "name": "Endovations",
+    "base_url": "https://endovations.es",
+    "scrape_url": "https://endovations.es/catalogo",
+    "categoria": "Laboratorio",
+    "selectors": {
+      "product_item": ".product-card, .item",
+      "name": "h2",
+      "url": "a"
+    }
   }
 ]
