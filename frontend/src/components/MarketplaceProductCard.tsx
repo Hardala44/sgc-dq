@@ -1,6 +1,8 @@
 import React from 'react';
-import { Package, Tag, Building2, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Tag, ChevronRight } from 'lucide-react';
 import type { ProductSearchResult, SupplierOffer } from '../types/marketplace';
+import { isPlaceholderUrl } from '../utils/marketplace';
+import CategoryIcon from './CategoryIcon';
 
 export type { ProductSearchResult as ProductoMarketplace, SupplierOffer as ProveedorOferta }; // For backwards compatibility
 
@@ -9,30 +11,9 @@ interface MarketplaceProductCardProps {
   onClick: (producto: ProductSearchResult) => void;
 }
 
-const STOCK_LABELS: Record<SupplierOffer['stock_status'], { label: string; color: string }> = {
-  in_stock: { label: 'En stock', color: 'text-emerald-400' },
-  low_stock: { label: 'Stock bajo', color: 'text-amber-400' },
-  out_of_stock: { label: 'Sin stock', color: 'text-red-400' },
-  unknown: { label: 'Consultar', color: 'text-slate-400' },
-};
-
-export { STOCK_LABELS };
-
-// Deterministic fallback image based on product id
-const FALLBACK_IMAGES = [
-  'https://images.unsplash.com/photo-1584362917165-526a968579e8?auto=format&fit=crop&q=80&w=800',
-  'https://images.unsplash.com/photo-1628177142898-93e46e48d5f5?auto=format&fit=crop&q=80&w=800',
-  'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&q=80&w=800',
-  'https://images.unsplash.com/photo-1581093458791-9f3c3900df4b?auto=format&fit=crop&q=80&w=800',
-  'https://images.unsplash.com/photo-1606811841689-23dfddce3e95?auto=format&fit=crop&q=80&w=800',
-  'https://images.unsplash.com/photo-1593491205049-7f032d28cf01?auto=format&fit=crop&q=80&w=800',
-];
-
-export const getFallbackImage = (id: number) => FALLBACK_IMAGES[id % FALLBACK_IMAGES.length];
-
 const MarketplaceProductCard: React.FC<MarketplaceProductCardProps> = ({ producto, onClick }) => {
-  const imageSrc = producto.imagen_url || getFallbackImage(producto.id);
-  
+  const isPlaceholder = isPlaceholderUrl(producto.imagen_url);
+
   // Safe default fallback for suministros if undefined
   const proveedoresList = producto.suministros || [];
   const MAX_LOGOS = 4;
@@ -49,17 +30,27 @@ const MarketplaceProductCard: React.FC<MarketplaceProductCardProps> = ({ product
       aria-label={`Consultar suministro para ${producto.nombre}`}
     >
       {/* ── Image Area ── */}
-      <div className="relative h-44 bg-slate-100 overflow-hidden flex-shrink-0">
-        <img
-          src={imageSrc}
-          alt={producto.nombre}
-          loading="lazy"
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 mix-blend-multiply"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = getFallbackImage(producto.id);
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-80" />
+      <div className="relative h-44 bg-slate-50 overflow-hidden flex-shrink-0">
+        {isPlaceholder ? (
+          /* Icon fills the whole area; sits below the logo stack (z-0) */
+          <div className="absolute inset-0 z-0 flex h-full w-full items-center justify-center bg-slate-50">
+            <CategoryIcon categoryName={producto.categoria_nombre} size={48} />
+          </div>
+        ) : (
+          <>
+            <img
+              src={producto.imagen_url!}
+              alt={producto.nombre}
+              loading="lazy"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+            {/* Dark scrim only on real photos so supplier logos stay legible */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-80" />
+          </>
+        )}
 
         {/* Brand / Identifier Tag */}
         {producto.marca && (
@@ -69,46 +60,47 @@ const MarketplaceProductCard: React.FC<MarketplaceProductCardProps> = ({ product
         )}
 
         {/* Suppliers Logos Stack */}
-        <div className="absolute bottom-3 left-3 z-10 flex flex-col gap-1">
-            <span className="text-[9px] font-bold text-white/90 uppercase tracking-widest ml-1 drop-shadow-md">Distribuidores ({proveedoresList.length})</span>
-            <div className="flex -space-x-2.5">
+        <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2">
+            {/* Avatar stack */}
+            <div className="flex -space-x-2">
               {visibleLogos.map((prov, i) => (
-                <div 
-                  key={prov.id} 
-                  className="w-7 h-7 rounded-full bg-white border border-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm relative z-10 ring-2 ring-white"
+                <div
+                  key={prov.id}
+                  className="w-6 h-6 rounded-full bg-white border border-white flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm"
                   style={{ zIndex: 10 - i }}
                   title={prov.proveedor.nombre}
                 >
                   {prov.proveedor.logo ? (
-                     <img 
-                       src={prov.proveedor.logo} 
-                       alt={prov.proveedor.nombre} 
-                       className="w-full h-full object-contain p-0.5" 
-                       onError={(e) => {
-                         const target = e.target as HTMLImageElement;
-                         if (target.src.includes('clearbit.com')) {
-                            const domain = target.src.split('clearbit.com/')[1];
-                            target.onerror = null; // Prevent infinite loops
-                            target.src = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
-                         } else {
-                            target.style.display = 'none';
-                         }
-                       }} 
-                     />
+                    <img
+                      src={prov.proveedor.logo}
+                      alt={prov.proveedor.nombre}
+                      className="w-full h-full object-contain p-0.5"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
                   ) : (
-                     <Building2 size={12} className="text-slate-400" />
+                    <span className="text-[8px] font-bold text-slate-600 leading-none select-none">
+                      {prov.proveedor.nombre.slice(0, 2).toUpperCase()}
+                    </span>
                   )}
                 </div>
               ))}
               {overflowLogos > 0 && (
-                <div 
-                  className="w-7 h-7 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center flex-shrink-0 text-[10px] font-bold text-slate-500 ring-2 ring-white"
+                <div
+                  className="w-6 h-6 rounded-full bg-slate-100 border border-white flex items-center justify-center flex-shrink-0 text-[9px] font-bold text-slate-500"
                   style={{ zIndex: 0 }}
                 >
                   +{overflowLogos}
                 </div>
               )}
             </div>
+            {/* Distribuidor count */}
+            <span className={`text-[9px] font-bold uppercase tracking-widest drop-shadow-sm ${
+              isPlaceholder ? 'text-slate-500' : 'text-white/90 drop-shadow-md'
+            }`}>
+              {proveedoresList.length === 1 ? '1 distribuidor' : `${proveedoresList.length} distribuidores`}
+            </span>
         </div>
 
         {/* Hover overlay action */}
@@ -132,24 +124,13 @@ const MarketplaceProductCard: React.FC<MarketplaceProductCardProps> = ({ product
           {producto.nombre}
         </h3>
 
-        {/* Footer Conditions Block */}
-        <div className="mt-auto pt-4 flex flex-col gap-3 border-t border-slate-100">
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded-full bg-klein-50 text-klein-600 flex items-center justify-center flex-shrink-0">
-               <CheckCircle2 size={12} strokeWidth={3} />
-            </div>
-            <span className="text-[11px] font-bold text-klein-700 uppercase tracking-widest">
-              Condiciones DQ Garantizadas
-            </span>
-          </div>
-          
-          <div className="flex items-center justify-between text-slate-500">
-             <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                 <span className="text-xs font-semibold text-slate-600">Ver proveedores aprobados</span>
-             </div>
-             <div className="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-klein-50 group-hover:text-klein-600 transition-all duration-300 bg-slate-50 border border-slate-200 group-hover:border-klein-200 text-slate-400">
-               <ChevronRight size={14} />
-             </div>
+        {/* Footer ── minimal: just a directional cue */}
+        <div className="mt-auto pt-3 flex items-center justify-between border-t border-slate-100">
+          <span className="text-xs font-semibold text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            Ver proveedores
+          </span>
+          <div className="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-klein-50 group-hover:text-klein-600 transition-all duration-300 bg-slate-50 border border-slate-200 group-hover:border-klein-200 text-slate-400">
+            <ChevronRight size={14} />
           </div>
         </div>
       </div>

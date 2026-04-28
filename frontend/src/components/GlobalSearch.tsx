@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Loader2, Folder, Building2, Star, Package } from 'lucide-react';
 import api from '../services/api';
+import { normalize } from '../utils/marketplace';
 
 export type SearchResults = {
     categorias: any[];
@@ -47,7 +48,18 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onSelectResult }) => {
             try {
                 // Ensure the endpoint hits exactly what's required: /api/directory/search/?q=[query]
                 const response = await api.get(`/directory/search/?q=${encodeURIComponent(query)}`);
-                setResults(response.data);
+                // Client-side accent-insensitive partial filter as a second pass
+                const q = normalize(query);
+                const filterItems = (items: any[]) =>
+                    (items ?? []).filter(item =>
+                        normalize(String(item.nombre ?? item.titulo ?? '')).includes(q)
+                    );
+                setResults({
+                    categorias:         filterItems(response.data.categorias),
+                    proveedores:        filterItems(response.data.proveedores),
+                    ofertas_destacadas: filterItems(response.data.ofertas_destacadas),
+                    productos:          filterItems(response.data.productos),
+                });
                 setIsOpen(true);
             } catch (error) {
                 console.error("Error fetching search results:", error);

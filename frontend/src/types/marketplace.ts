@@ -7,6 +7,7 @@ export interface SupplierOffer {
         contacto_nombre: string;
         contacto_email: string;
         contacto_telefono: string;
+        url_web: string;
     };
     url_compra: string;
     stock_status: 'in_stock' | 'low_stock' | 'out_of_stock' | 'unknown';
@@ -17,6 +18,7 @@ export interface ProductSearchResult {
     id: number;
     nombre: string;
     marca: string;
+    linea_producto: string;
     categoria: number;
     categoria_nombre: string;
     descripcion: string;

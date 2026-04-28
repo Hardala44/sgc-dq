@@ -69,34 +69,14 @@ class ProveedorOfertaSerializer(ModelSerializer):
 
     def get_proveedor(self, obj):
         request = self.context.get('request')
-        logo_url = None
-        
-        if obj.proveedor.logo and request:
+        # Prefer external logo_url; fall back to uploaded file
+        if obj.proveedor.logo_url:
+            logo_url = obj.proveedor.logo_url
+        elif obj.proveedor.logo and request:
             logo_url = request.build_absolute_uri(obj.proveedor.logo.url)
         else:
-            # Fallback to Clearbit for professional branding if no local logo exists
-            # We use a clean domain mapping for common providers
-            domain_map = {
-                'Henry Schein': 'henryschein.com',
-                'Proclinic': 'proclinic.es',
-                'ZimVie': 'zimvie.com',
-                '3M': '3m.com',
-                'Klockner': 'klockner.es',
-                'Dentaid': 'dentaid.com',
-                'Normon': 'normon.es',
-            }
-            
-            if obj.proveedor.nombre in domain_map:
-                domain = domain_map[obj.proveedor.nombre]
-            elif obj.proveedor.contacto_email and '@' in obj.proveedor.contacto_email:
-                domain = obj.proveedor.contacto_email.split('@')[-1].strip().split(' ')[0]
-            elif obj.proveedor.url_web:
-                domain = obj.proveedor.url_web.replace('https://', '').replace('http://', '').replace('www.', '').split('/')[0]
-            else:
-                domain = f"{obj.proveedor.nombre.lower().replace(' ', '')}.com"
+            logo_url = None
 
-            logo_url = f"https://logo.clearbit.com/{domain}"
-            
         return {
             'id': obj.proveedor.id,
             'nombre': obj.proveedor.nombre,

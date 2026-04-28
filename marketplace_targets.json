@@ -4,7 +4,7 @@
     "name": "Henry Schein",
     "base_url": "https://www.henryschein.es",
     "scrape_url": "https://www.henryschein.es/es-es/dentalclinica/c/browsesupplies",
-    "categoria": "Laboratorio",
+    "categoria": "Depósitos y Aparatología",
     "selectors": {
       "product_item": "li.product",
       "name": ".product-name a",
@@ -19,7 +19,7 @@
     "name": "Proclinic",
     "base_url": "https://www.proclinic.es",
     "scrape_url": "https://www.proclinic.es/tienda/clinica.html",
-    "categoria": "Laboratorio",
+    "categoria": "Depósitos y Aparatología",
     "selectors": {
       "product_item": ".product-card",
       "name": ".product-card__name a",
@@ -34,7 +34,7 @@
     "name": "DVD Dental",
     "base_url": "https://www.dvd-dental.com",
     "scrape_url": "https://www.dvd-dental.com/clinica/",
-    "categoria": "Laboratorio",
+    "categoria": "Depósitos y Aparatología",
     "selectors": {
       "product_item": ".product-item, .item",
       "name": ".product-name, .name a",
@@ -49,7 +49,7 @@
     "name": "ZimVie",
     "base_url": "https://www.zimvie.com",
     "scrape_url": "https://production.zimvie.eu/es/shop/category/implant-system-1",
-    "categoria": "Implantologia",
+    "categoria": "Implantología",
     "selectors": {
       "product_item": ".product-card, .oe_product",
       "name": ".product-title, h6 a",
@@ -64,7 +64,7 @@
     "name": "Straumann",
     "base_url": "https://shop.straumann.com",
     "scrape_url": "https://shop.straumann.com/es/es_es/Implantes/c/cat_stmn_implsol",
-    "categoria": "Implantologia",
+    "categoria": "Implantología",
     "selectors": {
       "product_item": ".product, .item-card",
       "name": ".product-name, .title a",
@@ -79,59 +79,879 @@
     "name": "IPD",
     "base_url": "https://www.ipd2004.com",
     "scrape_url": "https://www.ipd2004.com/es/catalogo",
-    "categoria": "Implantologia",
+    "categoria": "Implantología",
     "selectors": {
       "product_item": ".product-item, .catalog-item",
       "name": ".product-title, .title",
-      "url": "a"
-    }
+      "price": null,
+      "sku": null,
+      "brand": ".brand",
+      "image": "img[src]"
+    },
+    "_note": "check - catálogo sin precios públicos, revisar selectores"
   },
   {
     "id": "inibsa",
     "name": "Inibsa",
     "base_url": "https://inibsa.es",
-    "scrape_url": "https://inibsa.es/dental/",
-    "categoria": "Laboratorio",
+    "scrape_url": "https://inibsa.es/productos",
+    "categoria": "Implantología",
     "selectors": {
-      "product_item": ".portfolio-item, .product",
-      "name": ".elementor-heading-title",
-      "url": "a"
-    }
+      "product_item": ".product-item, article.product, .card",
+      "name": "h3, h2, .product-name",
+      "price": null,
+      "sku": null,
+      "brand": ".brand",
+      "image": "img[src]"
+    },
+    "_note": "check - sitio de marca, catálogo en /productos; sin tienda directa con precios"
   },
   {
     "id": "klockner",
-    "name": "Botiss (Klockner)",
+    "name": "Klockner / Botiss (implantes)",
     "base_url": "https://www.klockner.es",
     "scrape_url": "https://www.klockner.es/sistemas-de-implantes/",
-    "categoria": "Implantologia",
+    "categoria": "Implantología",
     "selectors": {
       "product_item": ".sistema-implante, .product",
       "name": "h3",
-      "url": "a"
-    }
+      "price": null,
+      "sku": null,
+      "brand": ".brand",
+      "image": "img[src]"
+    },
+    "_note": "check - sitio de marca, sin tienda; revisar selectores"
   },
   {
     "id": "dentaid",
     "name": "Dentaid",
     "base_url": "https://www.dentaid.es",
     "scrape_url": "https://www.dentaid.es/productos",
-    "categoria": "Laboratorio",
+    "categoria": "Depósitos y Aparatología",
     "selectors": {
       "product_item": ".card-producto, .product-item",
       "name": "h3, .title",
-      "url": "a"
-    }
+      "price": null,
+      "sku": null,
+      "brand": ".brand",
+      "image": "img[src]"
+    },
+    "_note": "check - sitio de marca, sin tienda directa; revisar selectores"
   },
   {
     "id": "endovations",
     "name": "Endovations",
     "base_url": "https://endovations.es",
     "scrape_url": "https://endovations.es/catalogo",
-    "categoria": "Laboratorio",
+    "categoria": "Depósitos y Aparatología",
     "selectors": {
       "product_item": ".product-card, .item",
       "name": "h2",
-      "url": "a"
-    }
+      "price": null,
+      "sku": null,
+      "brand": ".brand",
+      "image": "img[src]"
+    },
+    "_note": "check - revisar selectores"
+  },
+  {
+    "id": "broker-dental",
+    "name": "Broker Dental",
+    "base_url": "https://www.brokerdental.es",
+    "scrape_url": "https://www.brokerdental.es/clinica",
+    "categoria": "Depósitos y Aparatología",
+    "selectors": {
+      "product_item": "article, [class*='product'], section a[href*='brokerdental']",
+      "name": "h3, .product-title, [class*='ProductTitle']",
+      "price": "[class*='price'], [class*='Price']",
+      "sku": null,
+      "brand": "img[alt*='Brand'], [class*='brand']",
+      "image": "img[src]"
+    },
+    "_note": "check - SPA con SSR; tienda en /clinica; estructura verificada 2025"
+  },
+  {
+    "id": "axis-dental",
+    "name": "Axis Dental",
+    "base_url": "https://www.axisdental.es",
+    "scrape_url": "https://www.axisdental.es/tienda/",
+    "categoria": "Depósitos y Aparatología",
+    "selectors": {
+      "product_item": "li.product",
+      "name": ".woocommerce-loop-product__title",
+      "price": ".price .woocommerce-Price-amount",
+      "sku": ".sku span",
+      "brand": "[class*='brand']",
+      "image": "img.wp-post-image"
+    },
+    "_note": "check - selectores sin verificar (WooCommerce fallback)"
+  },
+  {
+    "id": "akura",
+    "name": "Akura Dental",
+    "base_url": "https://www.akura.es",
+    "scrape_url": "https://www.akura.es/catalogo/",
+    "categoria": "Depósitos y Aparatología",
+    "selectors": {
+      "product_item": "li.product, .product-item",
+      "name": ".woocommerce-loop-product__title, .product-name a",
+      "price": ".price .woocommerce-Price-amount",
+      "sku": ".sku span",
+      "brand": "[class*='brand']",
+      "image": "img.wp-post-image, img[src]"
+    },
+    "_note": "check - lupas ergonómicas y magnificación dental; selectores sin verificar"
+  },
+  {
+    "id": "adiemed",
+    "name": "Adiemed",
+    "base_url": "https://www.adiemed.es",
+    "scrape_url": "https://www.adiemed.es/desfibriladores/",
+    "categoria": "Otros",
+    "selectors": {
+      "product_item": "li.product, .product-item, article",
+      "name": ".woocommerce-loop-product__title, h2",
+      "price": ".price .woocommerce-Price-amount, .precio",
+      "sku": ".sku span, [data-sku]",
+      "brand": "[class*='brand']",
+      "image": "img.wp-post-image, img[src]"
+    },
+    "_note": "check - DEA Samaritan PAD + vitrina; selectores sin verificar"
+  },
+  {
+    "id": "katia-dental",
+    "name": "Katia Dental",
+    "base_url": "https://www.katiadental.es",
+    "scrape_url": "https://www.katiadental.es/catalogo/",
+    "categoria": "Depósitos y Aparatología",
+    "selectors": {
+      "product_item": "li.product",
+      "name": ".woocommerce-loop-product__title",
+      "price": ".price .woocommerce-Price-amount",
+      "sku": ".sku span",
+      "brand": "[class*='brand']",
+      "image": "img.wp-post-image"
+    },
+    "_note": "check - depósito dental asesoramiento personalizado; selectores sin verificar (WooCommerce fallback)"
+  },
+  {
+    "id": "ems-dental",
+    "name": "EMS Dental",
+    "base_url": "https://www.ems-dental.com",
+    "scrape_url": "https://www.ems-dental.com/es/productos",
+    "categoria": "Depósitos y Aparatología",
+    "selectors": {
+      "product_item": ".product-item, .product-card",
+      "name": ".product-name, .product-title, h3",
+      "price": null,
+      "sku": "[data-product-id], .sku",
+      "brand": ".brand",
+      "image": "img[src]"
+    },
+    "_note": "check - fabricante suizo AIRFLOW Prophylaxis Master; sin tienda directa ES"
+  },
+  {
+    "id": "quicksleeper",
+    "name": "Quicksleeper / Medicalfit",
+    "base_url": "https://www.quicksleeper.com",
+    "scrape_url": "https://www.quicksleeper.com/es/productos/",
+    "categoria": "Depósitos y Aparatología",
+    "selectors": {
+      "product_item": ".product-item, .woocommerce-product, article",
+      "name": ".product-name a, h2",
+      "price": ".price, .woocommerce-Price-amount",
+      "sku": "[data-sku], .sku span",
+      "brand": "[class*='brand']",
+      "image": "img[src]"
+    },
+    "_note": "check - anestesia intraósea; selectores sin verificar"
+  },
+  {
+    "id": "cherokee",
+    "name": "Cherokee Uniformes Médicos",
+    "base_url": "https://www.cherokee-medical.es",
+    "scrape_url": "https://www.cherokee-medical.es/uniformes/",
+    "categoria": "Otros",
+    "selectors": {
+      "product_item": "li.product, .product-item",
+      "name": ".woocommerce-loop-product__title, .product-name a",
+      "price": ".price .woocommerce-Price-amount",
+      "sku": ".sku span",
+      "brand": "[class*='brand']",
+      "image": "img.wp-post-image"
+    },
+    "_note": "check - uniformes clínica nº1 EEUU; dominio ES tentativo, revisar"
+  },
+  {
+    "id": "maletin-reanimacion",
+    "name": "Maletín de Reanimación (R de Benítez)",
+    "base_url": "https://www.rdebenitez.es",
+    "scrape_url": "https://www.rdebenitez.es/catalogo/",
+    "categoria": "Otros",
+    "selectors": {
+      "product_item": "li.product, .product-item, article",
+      "name": ".woocommerce-loop-product__title, h2",
+      "price": ".price .woocommerce-Price-amount",
+      "sku": ".sku span",
+      "brand": "[class*='brand']",
+      "image": "img[src]"
+    },
+    "_note": "check - maletines RCP y botellas oxígeno medicinal; dominio tentativo, revisar"
+  },
+  {
+    "id": "ceranium",
+    "name": "Ceranium",
+    "base_url": "https://www.ceranium.es",
+    "scrape_url": "https://www.ceranium.es/protesis/",
+    "categoria": "Laboratorio",
+    "selectors": {
+      "product_item": ".service-item, .trabajo-item, article",
+      "name": "h2, h3, .title",
+      "price": null,
+      "sku": null,
+      "brand": null,
+      "image": "img[src]"
+    },
+    "_note": "check - laboratorio prótesis dental Madrid; sin catálogo de precios público"
+  },
+  {
+    "id": "mondental",
+    "name": "Mondental",
+    "base_url": "https://www.mondental.es",
+    "scrape_url": "https://www.mondental.es/servicios/",
+    "categoria": "Laboratorio",
+    "selectors": {
+      "product_item": ".service-item, .trabajo, article",
+      "name": "h2, h3",
+      "price": null,
+      "sku": null,
+      "brand": null,
+      "image": "img[src]"
+    },
+    "_note": "check - laboratorio prótesis y ortodoncia; sin catálogo de precios público"
+  },
+  {
+    "id": "convaden",
+    "name": "ConVaden",
+    "base_url": "https://www.convaden.es",
+    "scrape_url": "https://www.convaden.es/laboratorio/",
+    "categoria": "Laboratorio",
+    "selectors": {
+      "product_item": ".service-item, .trabajo, article",
+      "name": "h2, h3",
+      "price": null,
+      "sku": null,
+      "brand": null,
+      "image": "img[src]"
+    },
+    "_note": "check - laboratorio prótesis con transporte incluido; sin catálogo público"
+  },
+  {
+    "id": "aesinergy",
+    "name": "Aesinergy",
+    "base_url": "https://www.aesinergy.com",
+    "scrape_url": "https://www.aesinergy.com/servicios/",
+    "categoria": "Servicios",
+    "selectors": {
+      "product_item": ".service-card, .plan, article",
+      "name": "h2, h3, .service-title",
+      "price": ".precio, .price, [class*='tarifa']",
+      "sku": null,
+      "brand": null,
+      "image": "img[src]"
+    },
+    "_note": "check - consultoría marketing y gestión dental; no-catálogo de producto"
+  },
+  {
+    "id": "talent-salud",
+    "name": "Talent Salud",
+    "base_url": "https://www.talentsalud.es",
+    "scrape_url": "https://www.talentsalud.es/servicios/",
+    "categoria": "Servicios",
+    "selectors": {
+      "product_item": ".plan, .service-card, article",
+      "name": "h2, h3, .plan-title",
+      "price": ".precio, .price, [class*='plan-price']",
+      "sku": null,
+      "brand": null,
+      "image": "img[src]"
+    },
+    "_note": "check - selección de personal sector salud +15 años; no-catálogo de producto"
+  },
+  {
+    "id": "digimevo",
+    "name": "Digimevo",
+    "base_url": "https://www.digimevo.com",
+    "scrape_url": "https://www.digimevo.com/planes/",
+    "categoria": "Servicios",
+    "selectors": {
+      "product_item": ".plan, .pricing-card, .plan-card",
+      "name": ".plan-title, h2, h3",
+      "price": ".plan-price, .precio, .price",
+      "sku": null,
+      "brand": null,
+      "image": "img[src]"
+    },
+    "_note": "check - sistema comunicación educativo inteligente para clínicas"
+  },
+  {
+    "id": "astute-control",
+    "name": "Astute Control",
+    "base_url": "https://www.astutecontrol.es",
+    "scrape_url": "https://www.astutecontrol.es/servicios/",
+    "categoria": "Servicios",
+    "selectors": {
+      "product_item": ".plan, .service-card, article",
+      "name": "h2, h3, .service-title",
+      "price": ".precio, .price",
+      "sku": null,
+      "brand": null,
+      "image": "img[src]"
+    },
+    "_note": "check - encuestas satisfacción pacientes + derivación Google Reviews"
+  },
+  {
+    "id": "botiss",
+    "name": "Botiss Biomaterials",
+    "base_url": "https://botiss.com",
+    "scrape_url": "https://botiss.com/products-and-solutions/",
+    "categoria": "Implantología",
+    "selectors": {
+      "product_item": "article, .product-item, [class*='product']",
+      "name": "h3, h2, [class*='title']",
+      "price": null,
+      "sku": null,
+      "brand": ".brand",
+      "image": "img[src]"
+    },
+    "_note": "check - sitio de marca; catálogo en botiss.com/products-and-solutions/; sin precios públicos"
+  },
+  {
+    "id": "biteright",
+    "name": "BiteRight",
+    "base_url": "https://biteright.dental",
+    "scrape_url": "https://biteright.dental/es/servicios/",
+    "categoria": "Implantología",
+    "selectors": {
+      "product_item": ".service-card, .plan, article",
+      "name": "h2, h3, .plan-title",
+      "price": ".precio, .price, [class*='plan']",
+      "sku": null,
+      "brand": null,
+      "image": "img[src]"
+    },
+    "_note": "check - planificación digital cirugía guiada sin equipamiento propio; cobro por caso"
+  },
+  {
+    "id": "iosfix",
+    "name": "IOSFIX",
+    "base_url": "https://www.iosfix.com",
+    "scrape_url": "https://www.iosfix.com/es/servicios/",
+    "categoria": "Implantología",
+    "selectors": {
+      "product_item": ".service-card, .plan, article",
+      "name": "h2, h3",
+      "price": ".precio, .price",
+      "sku": null,
+      "brand": null,
+      "image": "img[src]"
+    },
+    "_note": "check - corrección digital escaneado intraoral; primera corrección gratis + 5=1"
+  },
+  {
+    "id": "ormco-spark",
+    "name": "Ormco / Spark Aligners",
+    "base_url": "https://www.ormco.com",
+    "scrape_url": "https://www.ormco.com/es-es/products/",
+    "categoria": "Ortodoncia",
+    "selectors": {
+      "product_item": ".product-card, .product-item",
+      "name": ".product-title, h3",
+      "price": null,
+      "sku": "[data-sku], [data-product]",
+      "brand": ".brand",
+      "image": "img[src]"
+    },
+    "_note": "check - brackets Damon + alineadores Spark; sin precios públicos directos"
+  },
+  {
+    "id": "imperortho",
+    "name": "Imperortho",
+    "base_url": "https://imperortho.com",
+    "scrape_url": "https://imperortho.com/en/brackets",
+    "categoria": "Ortodoncia",
+    "selectors": {
+      "product_item": "article.product-miniature, .product-miniature",
+      "name": ".product-title a, h2 a",
+      "price": ".price, [itemprop='price']",
+      "sku": "[data-id-product], [data-id]",
+      "brand": ".brand, .manufacturer",
+      "image": "img.img-fluid, img[src]"
+    },
+    "_note": "check - depósito ortodoncia PrestaShop; fábrica propia EEUU; stock permanente 24-48h"
+  },
+  {
+    "id": "forestadent",
+    "name": "Forestadent",
+    "base_url": "https://www.forestadent.com",
+    "scrape_url": "https://www.forestadent.com/es-es/products/",
+    "categoria": "Ortodoncia",
+    "selectors": {
+      "product_item": ".product-item, .product-card",
+      "name": ".product-title, h3",
+      "price": null,
+      "sku": "[data-article], .sku",
+      "brand": ".brand",
+      "image": "img[src]"
+    },
+    "_note": "check - fabricante alemán (Pforzheim) ortodoncia; tarifa GOLD DQ; sin precios públicos"
+  },
+  {
+    "id": "ortoarea",
+    "name": "Ortoarea",
+    "base_url": "https://www.ortoarea.com",
+    "scrape_url": "https://www.ortoarea.com/tienda/",
+    "categoria": "Ortodoncia",
+    "selectors": {
+      "product_item": "li.product",
+      "name": ".woocommerce-loop-product__title",
+      "price": ".price .woocommerce-Price-amount",
+      "sku": ".sku span",
+      "brand": "[class*='brand']",
+      "image": "img.wp-post-image"
+    },
+    "_note": "check - depósito y laboratorio ortodoncia +20 años; selectores sin verificar (WooCommerce fallback)"
+  },
+  {
+    "id": "dentalmonitoring",
+    "name": "DentalMonitoring",
+    "base_url": "https://dental-monitoring.com",
+    "scrape_url": "https://dental-monitoring.com/es/plataforma/",
+    "categoria": "Ortodoncia",
+    "selectors": {
+      "product_item": ".plan, .plan-card, .pricing-card",
+      "name": ".plan-title, h2, h3",
+      "price": ".plan-price, .precio, .price",
+      "sku": null,
+      "brand": null,
+      "image": "img[src]"
+    },
+    "_note": "check - monitorización remota ortodoncia por IA; licencias SaaS + Scanbox"
+  },
+  {
+    "id": "infomed",
+    "name": "Infomed (Henry Schein Software)",
+    "base_url": "https://www.infomed.es",
+    "scrape_url": "https://www.infomed.es/productos/",
+    "categoria": "Servicios",
+    "selectors": {
+      "product_item": ".product-card, .plan, article",
+      "name": "h2, h3, .product-title",
+      "price": ".precio, .price, [class*='plan']",
+      "sku": null,
+      "brand": null,
+      "image": "img[src]"
+    },
+    "_note": "check - software gestión dental; contactar DentalQuality antes (936 116 420)"
+  },
+  {
+    "id": "ciberseguridad-telco",
+    "name": "Ciberseguridad y Comunicaciones DQ",
+    "base_url": "https://www.cyberproteccion.es",
+    "scrape_url": "https://www.cyberproteccion.es/pack-dental/",
+    "categoria": "Servicios",
+    "selectors": {
+      "product_item": ".plan, .plan-card, article",
+      "name": "h2, h3, .plan-title",
+      "price": ".precio, .price",
+      "sku": null,
+      "brand": null,
+      "image": "img[src]"
+    },
+    "_note": "check - dominio tentativo; pack Premium DQ 149€/mes; centralita cloud + ciberseguridad"
+  },
+  {
+    "id": "kokuai",
+    "name": "Kokuai (Confirmación Automática de Citas)",
+    "base_url": "https://www.kokuai.io",
+    "scrape_url": "https://www.kokuai.io/precios/",
+    "categoria": "Servicios",
+    "selectors": {
+      "product_item": ".pricing-plan, .plan-card, .plan",
+      "name": ".plan-name, h2, h3",
+      "price": ".plan-price, .precio, .price",
+      "sku": null,
+      "brand": null,
+      "image": "img[src]"
+    },
+    "_note": "check - IA gestión de citas y recall; SaaS mensual con 10% dto DQ"
+  },
+  {
+    "id": "proteccion-radiologica",
+    "name": "Protección Radiológica DQ",
+    "base_url": "https://www.asesoriaradiologica.es",
+    "scrape_url": "https://www.asesoriaradiologica.es/servicios/",
+    "categoria": "Servicios",
+    "selectors": {
+      "product_item": ".service-item, .plan, article",
+      "name": "h2, h3, .service-title",
+      "price": ".precio, .price",
+      "sku": null,
+      "brand": null,
+      "image": "img[src]"
+    },
+    "_note": "check - dominio tentativo; servicio UTPR y dosimetría; 15% dto sobre tarifa"
+  },
+  {
+    "id": "radmedica",
+    "name": "Radmedica – Centros Radiológicos",
+    "base_url": "https://www.radmedica.es",
+    "scrape_url": "https://www.radmedica.es/servicios/",
+    "categoria": "Servicios",
+    "selectors": {
+      "product_item": ".service-card, .estudio-item, article",
+      "name": "h2, h3",
+      "price": ".precio, .price",
+      "sku": null,
+      "brand": null,
+      "image": "img[src]"
+    },
+    "_note": "check - centros radiología dental Barcelona/Tarragona/Girona; 5% dto DQ"
+  },
+  {
+    "id": "sabadell-consumer",
+    "name": "Sabadell Consumer",
+    "base_url": "https://www.sabadellconsumer.com",
+    "scrape_url": "https://www.sabadellconsumer.com/financiacion-medica/",
+    "categoria": "Financieras",
+    "selectors": {
+      "product_item": ".plan, .producto-financiero, .oferta, article",
+      "name": "h2, h3, .plan-title",
+      "price": ".tae, .tipo, [class*='rate'], [class*='interes']",
+      "sku": null,
+      "brand": null,
+      "image": "img[src]"
+    },
+    "_note": "check - financiación pacientes; respuesta ágil y pago inmediato a clínica"
+  },
+  {
+    "id": "kutxabank",
+    "name": "Kutxabank",
+    "base_url": "https://www.kutxabank.es",
+    "scrape_url": "https://www.kutxabank.es/cs/Satellite/kutxabank/es/Empresas/Financiacion.html",
+    "categoria": "Financieras",
+    "selectors": {
+      "product_item": ".plan, .producto-financiero, article",
+      "name": "h2, h3, .plan-title",
+      "price": ".tae, .tipo, [class*='rate']",
+      "sku": null,
+      "brand": null,
+      "image": "img[src]"
+    },
+    "_note": "check - financiación empresas sanitarias; URL tentativa, verificar"
+  },
+  {
+    "id": "nowon",
+    "name": "Nowon Plataforma Financiación",
+    "base_url": "https://www.nowon.es",
+    "scrape_url": "https://www.nowon.es/clinicas/",
+    "categoria": "Financieras",
+    "selectors": {
+      "product_item": ".plan, .plan-card, .pricing-card",
+      "name": ".plan-name, h2, h3",
+      "price": ".plan-price, [class*='commission'], [class*='coste']",
+      "sku": null,
+      "brand": null,
+      "image": "img[src]"
+    },
+    "_note": "check - agrega múltiples financieras en un formulario; 10% dto sobre tarifa servicios"
+  },
+  {
+    "id": "roca-asociados",
+    "name": "Roca Asociados Abogados y Economistas",
+    "base_url": "https://www.rocaasociados.com",
+    "scrape_url": "https://www.rocaasociados.com/servicios/",
+    "categoria": "Servicios",
+    "selectors": {
+      "product_item": ".service-card, .area-practica, article",
+      "name": "h2, h3, .area-title",
+      "price": ".precio, .honorarios, [class*='price']",
+      "sku": null,
+      "brand": null,
+      "image": "img[src]"
+    },
+    "_note": "check - firma jurídico-económica fundada 1995; descuentos en todos sus servicios"
+  },
+  {
+    "id": "martin-cachon",
+    "name": "Martín y Cachón Seguros",
+    "base_url": "https://www.martinycachon.com",
+    "scrape_url": "https://www.martinycachon.com/seguros-clinica-dental/",
+    "categoria": "Servicios",
+    "selectors": {
+      "product_item": ".plan, .seguro-card, article",
+      "name": "h2, h3, .plan-title",
+      "price": ".precio, .prima, [class*='price']",
+      "sku": null,
+      "brand": null,
+      "image": "img[src]"
+    },
+    "_note": "check - correduría seguros; garantía coste inferior a seguro actual"
+  },
+  {
+    "id": "otp-europreven",
+    "name": "OTP – Europreven",
+    "base_url": "https://www.europreven.com",
+    "scrape_url": "https://www.europreven.com/prevencion-riesgos-laborales/",
+    "categoria": "Servicios",
+    "selectors": {
+      "product_item": ".service-item, .plan, article",
+      "name": "h2, h3, .service-title",
+      "price": ".precio, .price",
+      "sku": null,
+      "brand": null,
+      "image": "img[src]"
+    },
+    "_note": "check - prevención riesgos laborales; +30.000 clientes España"
+  },
+  {
+    "id": "vdoble",
+    "name": "VDOBLE Consultores Clínicas Dentales",
+    "base_url": "https://www.vdoble.com",
+    "scrape_url": "https://www.vdoble.com/servicios/",
+    "categoria": "Servicios",
+    "selectors": {
+      "product_item": ".service-card, .plan, article",
+      "name": "h2, h3, .service-title",
+      "price": ".precio, .price, [class*='tarifa']",
+      "sku": null,
+      "brand": null,
+      "image": "img[src]"
+    },
+    "_note": "check - gestoría especializada clínicas dentales; formación en COEM"
+  },
+  {
+    "id": "idhplatform",
+    "name": "IDH Platform (Recuperación de Deuda)",
+    "base_url": "https://www.idhplatform.com",
+    "scrape_url": "https://www.idhplatform.com/servicios/",
+    "categoria": "Servicios",
+    "selectors": {
+      "product_item": ".plan, .service-card, article",
+      "name": "h2, h3, .plan-title",
+      "price": ".precio, .comision, [class*='rate']",
+      "sku": null,
+      "brand": null,
+      "image": "img[src]"
+    },
+    "_note": "check - recuperación deuda pacientes; 8% comisión sobre recuperado (20% dto DQ)"
+  },
+  {
+    "id": "mediconsulting",
+    "name": "Mediconsulting (ETL Global)",
+    "base_url": "https://www.mediconsulting.es",
+    "scrape_url": "https://www.mediconsulting.es/servicios/",
+    "categoria": "Servicios",
+    "selectors": {
+      "product_item": ".service-card, .plan, article",
+      "name": "h2, h3, .service-title",
+      "price": ".precio, .price",
+      "sku": null,
+      "brand": null,
+      "image": "img[src]"
+    },
+    "_note": "check - asesoría legal/fiscal/laboral clínicas; consultas gratuitas DQ"
+  },
+  {
+    "id": "saniswiss",
+    "name": "Saniswiss",
+    "base_url": "https://www.saniswiss.com",
+    "scrape_url": "https://www.saniswiss.com/es/productos/",
+    "categoria": "Depósitos y Aparatología",
+    "selectors": {
+      "product_item": ".product-item, .product-card",
+      "name": ".product-name, h3",
+      "price": ".price, .precio",
+      "sku": "[data-sku], .sku",
+      "brand": ".brand",
+      "image": "img[src]"
+    },
+    "_note": "check - empresa suiza antimicrobianos y control de infecciones; 15% dto DQ"
+  },
+  {
+    "id": "hussogenix",
+    "name": "Hussogenix",
+    "base_url": "https://www.hussogenix.com",
+    "scrape_url": "https://www.hussogenix.com/analisis-geneticos/",
+    "categoria": "Laboratorio",
+    "selectors": {
+      "product_item": ".test-card, .analisis-card, .plan, article",
+      "name": "h2, h3, .test-title",
+      "price": ".precio, .price",
+      "sku": null,
+      "brand": null,
+      "image": "img[src]"
+    },
+    "_note": "check - análisis genéticos y microbiológicos en odontología; 14% dto DQ"
+  },
+  {
+    "id": "wellisair",
+    "name": "Wellisair / SIPCO Environmental",
+    "base_url": "https://www.wellisair.com",
+    "scrape_url": "https://www.wellisair.com/es/tienda/",
+    "categoria": "Otros",
+    "selectors": {
+      "product_item": "li.product, .product-item",
+      "name": ".woocommerce-loop-product__title",
+      "price": ".price .woocommerce-Price-amount",
+      "sku": ".sku span",
+      "brand": "[class*='brand']",
+      "image": "img.wp-post-image"
+    },
+    "_note": "check - purificador aire/superficies por radicales OH; cartuchos 4uds 112€ DQ"
+  },
+  {
+    "id": "santacreu-design",
+    "name": "Interiorismo Santacreu",
+    "base_url": "https://www.santacreudesign.com",
+    "scrape_url": "https://www.santacreudesign.com/proyectos/",
+    "categoria": "Otros",
+    "selectors": {
+      "product_item": ".project-card, .proyecto, article",
+      "name": "h2, h3, .project-title",
+      "price": null,
+      "sku": null,
+      "brand": null,
+      "image": "img[src]"
+    },
+    "_note": "check - interiorismo diseño clínicas dentales; presupuesto por proyecto"
+  },
+  {
+    "id": "sadival",
+    "name": "Sadival Cestas de Navidad",
+    "base_url": "https://www.sadival.es",
+    "scrape_url": "https://www.sadival.es/cestas-navidad/",
+    "categoria": "Otros",
+    "selectors": {
+      "product_item": "li.product, .product-item",
+      "name": ".woocommerce-loop-product__title, h2",
+      "price": ".price .woocommerce-Price-amount",
+      "sku": ".sku span",
+      "brand": "[class*='brand']",
+      "image": "img.wp-post-image, img[src]"
+    },
+    "_note": "check - lotes y cestas navideñas; principal fabricante España; 10% dto DQ"
+  },
+  {
+    "id": "bruneau",
+    "name": "Bruneau Material de Oficina",
+    "base_url": "https://www.bruneau.es",
+    "scrape_url": "https://www.bruneau.es/mobiliario-y-material-de-oficina/",
+    "categoria": "Otros",
+    "selectors": {
+      "product_item": ".product-item, .product-card",
+      "name": ".product-title, .product-name a",
+      "price": ".product-price, .price",
+      "sku": ".product-ref, [data-sku]",
+      "brand": ".brand, .manufacturer",
+      "image": "img.product-image, img[src]"
+    },
+    "_note": "check - material oficina + ropa laboral + mobiliario + ofimática; tarifa Gran Cuenta DQ"
+  },
+  {
+    "id": "3m-dental",
+    "name": "3M España – Dental",
+    "base_url": "https://www.3m.com",
+    "scrape_url": "https://www.3m.com/3M/es_ES/p/c/dental/",
+    "categoria": "Depósitos y Aparatología",
+    "selectors": {
+      "product_item": ".product-card, [class*='ProductCard'], [class*='product-item']",
+      "name": "[class*='ProductTitle'], .product-name, h3",
+      "price": "[class*='Price'], .price",
+      "sku": "[data-product-id], [class*='ProductId']",
+      "brand": ".brand",
+      "image": "img[src]"
+    },
+    "_note": "check - composites Filtek, adhesivos Scotchbond, blanqueamiento; revisar selectores React/Next"
+  },
+  {
+    "id": "dentsply-sirona",
+    "name": "Dentsply Sirona España",
+    "base_url": "https://www.dentsplysirona.com",
+    "scrape_url": "https://www.dentsplysirona.com/es-es/products.html",
+    "categoria": "Depósitos y Aparatología",
+    "selectors": {
+      "product_item": ".product-item, .product-card",
+      "name": ".product-name, h3",
+      "price": null,
+      "sku": "[data-product-id], .product-code",
+      "brand": ".brand",
+      "image": "img[src]"
+    },
+    "_note": "check - CAD-CAM Cerec, endodoncia, implantología, imagenología; sin precios públicos"
+  },
+  {
+    "id": "ivoclar",
+    "name": "Ivoclar Vivadent",
+    "base_url": "https://www.ivoclar.com",
+    "scrape_url": "https://www.ivoclar.com/es_es/products",
+    "categoria": "Laboratorio",
+    "selectors": {
+      "product_item": ".product-card, .product-item",
+      "name": ".product-name, h3",
+      "price": null,
+      "sku": "[data-article], .sku",
+      "brand": ".brand",
+      "image": "img[src]"
+    },
+    "_note": "check - cerámica IPS, composites Tetric, materiales prótesis; sin precios públicos directos"
+  },
+  {
+    "id": "voco-dental",
+    "name": "VOCO",
+    "base_url": "https://www.voco.dental",
+    "scrape_url": "https://www.voco.dental/es/products/",
+    "categoria": "Depósitos y Aparatología",
+    "selectors": {
+      "product_item": ".product-card, .product-item",
+      "name": ".product-name, h3",
+      "price": null,
+      "sku": "[data-ref], .product-id",
+      "brand": ".brand",
+      "image": "img[src]"
+    },
+    "_note": "check - composites Grandio, Ionolux, preventivos; fabricante alemán sin tienda directa ES"
+  },
+  {
+    "id": "septodont",
+    "name": "Septodont",
+    "base_url": "https://www.septodont.com",
+    "scrape_url": "https://www.septodont.com/es/productos/",
+    "categoria": "Depósitos y Aparatología",
+    "selectors": {
+      "product_item": ".product-item, .product-card, article.product",
+      "name": ".product-name, h3",
+      "price": null,
+      "sku": "[data-product-id], .sku",
+      "brand": ".brand",
+      "image": "img[src]"
+    },
+    "_note": "check - Septanest lidocaína/articaína, endodoncia Biodentine; sin tienda directa ES"
+  },
+  {
+    "id": "kulzer",
+    "name": "Kulzer",
+    "base_url": "https://www.kulzer.com",
+    "scrape_url": "https://www.kulzer.com/es/products/",
+    "categoria": "Laboratorio",
+    "selectors": {
+      "product_item": ".product-item, .product-card",
+      "name": ".product-name, h3",
+      "price": null,
+      "sku": "[data-product-id], .product-ref",
+      "brand": ".brand",
+      "image": "img[src]"
+    },
+    "_note": "check - composites Charisma, acrílicos Paladon, blanqueamiento Polanight; sin tienda ES directa"
   }
 ]

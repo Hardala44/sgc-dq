@@ -14,7 +14,7 @@ const Header = () => {
 
     if (!authUser) {
         return (
-            <header className="h-16 bg-white border-b border-slate-200/60 flex items-center justify-between px-6 fixed top-0 right-0 left-64 z-40">
+            <header className="h-16 bg-white border-b border-slate-200/60 flex items-center justify-between px-6 z-40 flex-shrink-0 w-full">
                 <div className="animate-pulse bg-slate-200 h-4 w-48 rounded"></div>
             </header>
         );
@@ -31,12 +31,7 @@ const Header = () => {
     const initial = displayName.substring(0, 2).toUpperCase();
 
     return (
-        <header className="h-16 bg-white border-b border-slate-200/60 flex items-center justify-between px-6 fixed top-0 right-0 left-64 z-40">
-            {/* Left side */}
-            <div className="text-slate-500 text-xs font-medium tracking-tight">
-                <span className="text-slate-400">Bienvenido,</span> <span className="text-slate-900 font-semibold">{displayName}</span>
-            </div>
-
+        <header className="h-16 bg-white border-b border-slate-200/60 flex items-center justify-end px-6 z-40 flex-shrink-0 w-full">
             {/* Right Side: Gamification & Profile */}
             <div className="flex items-center gap-4">
 
@@ -71,11 +66,7 @@ const Header = () => {
                     <div className="w-7 h-7 rounded bg-slate-950 text-white flex items-center justify-center font-bold text-[10px]">
                         {initial}
                     </div>
-                    <div className="hidden lg:block text-left">
-                        <p className="text-xs font-semibold text-slate-900 tracking-tight leading-none group-hover:text-amber-600 transition-colors">{displayName}</p>
-                        <p className="text-[10px] text-slate-500 truncate max-w-[100px] mt-0.5">{displayClinic}</p>
-                    </div>
-                    <UserIcon className="w-4 h-4 text-slate-400 group-hover:text-slate-600 ml-1" />
+                    <UserIcon className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
                 </Link>
             </div>
         </header>

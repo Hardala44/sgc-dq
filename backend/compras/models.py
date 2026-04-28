@@ -26,6 +26,7 @@ class Proveedor(models.Model):
     nombre = models.CharField(max_length=200)
     descripcion_larga = models.TextField(blank=True)
     logo = models.ImageField(upload_to='proveedores/', blank=True, null=True)
+    logo_url = models.URLField(blank=True, help_text='External logo URL (overrides uploaded logo file)')
     categorias = models.ManyToManyField(Categoria)
     es_estrategico = models.BooleanField(default=False)
     descuento_dq = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)

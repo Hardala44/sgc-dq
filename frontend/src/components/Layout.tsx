@@ -9,14 +9,14 @@ const Layout = () => {
             <Sidebar />
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col relative z-0 ml-20 transition-all duration-300">
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 
                 {/* Removed Heavy Blur Divs for Performance */}
 
                 <Header />
 
                 {/* Scrollable Page Canvas */}
-                <main className="flex-1 overflow-x-hidden overflow-y-auto w-full pt-16 pb-16">
+                <main className="flex-1 overflow-x-hidden overflow-y-auto w-full pb-16">
                     <div className="max-w-[1400px] w-full mx-auto px-6 md:px-10 lg:px-16 spacing-y-12">
                         <Outlet />
                     </div>

@@ -6,7 +6,8 @@ import GlobalSearch from '../components/GlobalSearch';
 import MarketplaceProductCard from '../components/MarketplaceProductCard';
 import ProductoComparacionPanel from '../components/ProductoComparacionPanel';
 import type { ProductoMarketplace } from '../components/MarketplaceProductCard';
-import { Loader2, Package, LayoutGrid, Building2, ChevronRight, ChevronDown, Folder, Layers } from 'lucide-react';
+import { normalize } from '../utils/marketplace';
+import { Loader2, Package, LayoutGrid, Building2, ChevronRight, ChevronDown, Box, Stethoscope, Zap, FlaskConical, CreditCard, AlignCenter, Layers } from 'lucide-react';
 
 interface Categoria {
     id: number;
@@ -179,6 +180,28 @@ const Catalogo = () => {
     // ── Derived ───────────────────────────────────────────────────────────────
     const mainCategories = categories.filter(c => c.parent === null).sort((a,b)=>a.id-b.id);
 
+    // Accent-insensitive client filter applied on top of API search results
+    const normalizedQuery = normalize(searchQuery);
+    const filteredSearchProductos = normalizedQuery.length > 1
+        ? searchProductos.filter(p => normalize(p.nombre).includes(normalizedQuery) || normalize(p.categoria_nombre ?? '').includes(normalizedQuery))
+        : searchProductos;
+    const filteredSearchProveedores = normalizedQuery.length > 1
+        ? searchProveedores.filter(p => normalize(p.nombre).includes(normalizedQuery))
+        : searchProveedores;
+
+    // ── Category icon mapping ─────────────────────────────────────────────────
+    const getCategoryIcon = (name: string, isSelected: boolean) => {
+        const cls = `shrink-0 ${isSelected ? 'text-klein-600' : 'text-slate-400'}`;
+        const n = normalize(name);
+        if (n.includes('deposito') || n.includes('aparatolog')) return <Box size={18} className={cls} />;
+        if (n.includes('servicio'))                              return <Stethoscope size={18} className={cls} />;
+        if (n.includes('implantolog'))                           return <Zap size={18} className={cls} />;
+        if (n.includes('laboratorio'))                           return <FlaskConical size={18} className={cls} />;
+        if (n.includes('financier'))                             return <CreditCard size={18} className={cls} />;
+        if (n.includes('ortodoncia'))                            return <AlignCenter size={18} className={cls} />;
+        return <Layers size={18} className={cls} />;
+    };
+
     // ── Sidebar Renderer ──────────────────────────────────────────────────────
     const renderSidebarCategory = (cat: Categoria) => {
         const isSelected = selectedCategory?.id === cat.id;
@@ -197,7 +220,7 @@ const Catalogo = () => {
                     }`}
                 >
                     <div className="flex-shrink-0 flex items-center justify-center w-6 h-6">
-                        {hasChildren ? <Layers size={18} className={isSelected ? 'text-klein-600' : 'text-slate-400'} /> : <Folder size={18} className={isSelected ? 'text-klein-600' : 'text-slate-400'} />}
+                        {getCategoryIcon(cat.nombre, isSelected)}
                     </div>
                     <div className="flex items-center justify-between flex-1 overflow-hidden ml-3">
                         <span className="truncate whitespace-nowrap text-sm tracking-tight">{cat.nombre}</span>
@@ -412,9 +435,9 @@ const Catalogo = () => {
                                     </div>
 
                                     {activeResultTab === 'productos' ? (
-                                        searchProductos.length > 0 ? (
+                                        filteredSearchProductos.length > 0 ? (
                                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                                {searchProductos.map(producto => (
+                                                {filteredSearchProductos.map(producto => (
                                                     <MarketplaceProductCard
                                                         key={producto.id}
                                                         producto={producto}
@@ -426,9 +449,9 @@ const Catalogo = () => {
                                             <EmptyState icon={<LayoutGrid className="w-10 h-10 text-slate-300" />} title="Sin productos" description="No se encontraron productos para esta búsqueda." />
                                         )
                                     ) : (
-                                        searchProveedores.length > 0 ? (
+                                        filteredSearchProveedores.length > 0 ? (
                                             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                                                {searchProveedores.map(proveedor => (
+                                                {filteredSearchProveedores.map(proveedor => (
                                                     <ProviderCard key={proveedor.id} proveedor={proveedor} />
                                                 ))}
                                             </div>
