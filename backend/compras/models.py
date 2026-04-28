@@ -42,6 +42,19 @@ class Proveedor(models.Model):
     pdf_tarifas = models.FileField(upload_to='tarifas/', blank=True, null=True)
     modo_pedido = models.CharField(max_length=20, choices=MODO_PEDIDO_CHOICES, default='email_pedido')
     activo = models.BooleanField(default=True)
+    ahorro_estimado = models.DecimalField(
+        max_digits=5, 
+        decimal_places=4, 
+        null=True, 
+        blank=True, 
+        help_text="Porcentaje de ahorro estimado (Diferencial). Ej: 0.05 para 5%."
+    )
+    categoria_principal = models.CharField(
+        max_length=255, 
+        null=True, 
+        blank=True,
+        help_text="Clasificación macro del proveedor según el Excel financiero."
+    )
 
     def __str__(self):
         return self.nombre
