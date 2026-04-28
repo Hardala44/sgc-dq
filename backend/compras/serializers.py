@@ -15,10 +15,15 @@ class CategoriaSerializer(ModelSerializer):
 
 class ProveedorSerializer(ModelSerializer):
     categorias = serializers.StringRelatedField(many=True, read_only=True)
+    num_lineas_producto = serializers.SerializerMethodField()
 
     class Meta:
         model = Proveedor
         fields = '__all__'
+
+    def get_num_lineas_producto(self, obj):
+        """Count distinct Marketplace Productos this provider supplies."""
+        return obj.ofertas_marketplace.values('producto').distinct().count()
 
 
 # ─── Legacy Serializers (kept for backward compatibility) ─────────────────────

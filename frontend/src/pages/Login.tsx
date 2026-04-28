@@ -21,14 +21,12 @@ const Login = () => {
             // For now, using the input email
             login(response.data.access, response.data.refresh, { username: email, email });
             navigate('/');
-        } catch (err: any) {
-            console.error(err);
-            if (err.response) {
-                setError(`Login failed: ${err.response.status} - ${JSON.stringify(err.response.data)}`);
-            } else if (err.request) {
-                setError('Login failed: No response from server. Check if backend is running.');
+        } catch (err) {
+            const axiosError = err as { response?: { data?: { detail?: string } } };
+            if (axiosError.response && axiosError.response.data && axiosError.response.data.detail) {
+                setError(axiosError.response.data.detail);
             } else {
-                setError(`Login failed: ${err.message}`);
+                setError('Login fallido. Por favor revise sus credenciales.');
             }
         }
     };

@@ -3,15 +3,20 @@ import { Search, Loader2, Folder, Building2, Star, Package } from 'lucide-react'
 import api from '../services/api';
 import { normalize } from '../utils/marketplace';
 
+interface SearchCategoria { id?: number; nombre: string; parent?: unknown; }
+interface SearchProveedor { id?: number; nombre: string; tipo_interaccion?: string; }
+interface SearchOferta   { id?: number; nombre: string; proveedor_nombre?: string; precio_dq?: number | string; }
+interface SearchProducto  { id?: number; nombre: string; marca?: string; supplier_count?: number; min_price?: string | number; }
+
 export type SearchResults = {
-    categorias: any[];
-    proveedores: any[];
-    ofertas_destacadas: any[];
-    productos: any[];
+    categorias: SearchCategoria[];
+    proveedores: SearchProveedor[];
+    ofertas_destacadas: SearchOferta[];
+    productos: SearchProducto[];
 };
 
 interface GlobalSearchProps {
-    onSelectResult?: (type: 'categoria' | 'proveedor' | 'oferta' | 'producto', item: any) => void;
+    onSelectResult?: (type: 'categoria' | 'proveedor' | 'oferta' | 'producto', item: unknown) => void;
 }
 
 const GlobalSearch: React.FC<GlobalSearchProps> = ({ onSelectResult }) => {
@@ -50,7 +55,7 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onSelectResult }) => {
                 const response = await api.get(`/directory/search/?q=${encodeURIComponent(query)}`);
                 // Client-side accent-insensitive partial filter as a second pass
                 const q = normalize(query);
-                const filterItems = (items: any[]) =>
+                const filterItems = <T extends { nombre?: string; titulo?: string }>(items: T[]): T[] =>
                     (items ?? []).filter(item =>
                         normalize(String(item.nombre ?? item.titulo ?? '')).includes(q)
                     );
@@ -72,7 +77,7 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onSelectResult }) => {
         return () => clearTimeout(delayDebounceFn);
     }, [query]);
 
-    const handleSelect = (type: 'categoria' | 'proveedor' | 'oferta' | 'producto', item: any) => {
+    const handleSelect = (type: 'categoria' | 'proveedor' | 'oferta' | 'producto', item: SearchCategoria | SearchProveedor | SearchOferta | SearchProducto) => {
         setIsOpen(false);
         setQuery(item.nombre || query);
         if (onSelectResult) {
@@ -221,7 +226,7 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onSelectResult }) => {
                                     <div className="px-4 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50/80 sticky top-0 backdrop-blur-sm z-10">
                                         Catálogo
                                     </div>
-                                    {results.productos.map((producto: any, idx: number) => (
+                                    {results.productos.map((producto, idx) => (
                                         <div 
                                             key={`producto-${producto.id || idx}`}
                                             onClick={() => handleSelect('producto', producto)}

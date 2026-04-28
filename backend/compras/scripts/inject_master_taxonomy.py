@@ -126,272 +126,179 @@ _I = {
 # Cada linea_producto tiene su propia clave en _I → imagen única y semánticamente correcta.
 
 MASTER_TAXONOMY = [
-    # 1. DEPÓSITOS Y APARATOLOGÍA  (20 líneas físicas, todas con imagen única)
-    {"categoria": "Depósitos y Aparatología", "image_url": _I['composite'],
+    # 1. DEPÓSITOS Y APARATOLOGÍA
+    {"categoria_raiz": "Depósitos y Aparatología", "subcategoria": None, "image_url": _I['composite'],
      "linea_producto": "Material de Composite y Resinas",
-     "proveedores": ["Henry Schein", "Proclinic", "DVD Dental", "Broker Dental", "Axis Dental"]},
+     "proveedores": ["HENRY SCHEIN", "PROCLINIC", "DVD", "BROKER", "AXIS"]},
 
-    {"categoria": "Depósitos y Aparatología", "image_url": _I['bonding'],
+    {"categoria_raiz": "Depósitos y Aparatología", "subcategoria": None, "image_url": _I['bonding'],
      "linea_producto": "Adhesivos y Bonding Dental",
-     "proveedores": ["Henry Schein", "Proclinic", "DVD Dental", "Broker Dental", "Katia Dental"]},
+     "proveedores": ["HENRY SCHEIN", "PROCLINIC", "DVD", "BROKER", "KATIA"]},
 
-    {"categoria": "Depósitos y Aparatología", "image_url": _I['anestesia_loc'],
+    {"categoria_raiz": "Depósitos y Aparatología", "subcategoria": None, "image_url": _I['anestesia_loc'],
      "linea_producto": "Anestésicos Locales (cartuchos, agujas)",
-     "proveedores": ["Henry Schein", "Proclinic", "DVD Dental", "Broker Dental"]},
+     "proveedores": ["HENRY SCHEIN", "PROCLINIC", "DVD", "BROKER"]},
 
-    {"categoria": "Depósitos y Aparatología", "image_url": _I['anestesia_inosea'],
+    {"categoria_raiz": "Depósitos y Aparatología", "subcategoria": None, "image_url": _I['anestesia_inosea'],
      "linea_producto": "Sistemas de Anestesia Intraósea",
-     "proveedores": ["Quicksleeper"]},
+     "proveedores": ["ADIEMED"]},
 
-    {"categoria": "Depósitos y Aparatología", "image_url": _I['endodoncia'],
+    {"categoria_raiz": "Depósitos y Aparatología", "subcategoria": None, "image_url": _I['endodoncia'],
      "linea_producto": "Material de Endodoncia",
-     "proveedores": ["Henry Schein", "Proclinic", "DVD Dental", "Broker Dental", "Endovations"]},
+     "proveedores": ["HENRY SCHEIN", "PROCLINIC", "DVD", "BROKER", "ENDOVATIONS"]},
 
-    {"categoria": "Depósitos y Aparatología", "image_url": _I['blanqueo'],
+    {"categoria_raiz": "Depósitos y Aparatología", "subcategoria": None, "image_url": _I['blanqueo'],
      "linea_producto": "Blanqueamiento Dental",
-     "proveedores": ["Henry Schein", "Proclinic", "DVD Dental", "Dentaid"]},
+     "proveedores": ["HENRY SCHEIN", "PROCLINIC", "DVD", "DENTAID"]},
 
-    {"categoria": "Depósitos y Aparatología", "image_url": _I['higiene'],
+    {"categoria_raiz": "Depósitos y Aparatología", "subcategoria": None, "image_url": _I['higiene'],
      "linea_producto": "Higiene y Profilaxis Clínica",
-     "proveedores": ["EMS Dental", "Dentaid", "Henry Schein", "Proclinic"]},
+     "proveedores": ["EMS", "DENTAID", "HENRY SCHEIN", "PROCLINIC"]},
 
-    {"categoria": "Depósitos y Aparatología", "image_url": _I['ionomer'],
+    {"categoria_raiz": "Depósitos y Aparatología", "subcategoria": None, "image_url": _I['ionomer'],
      "linea_producto": "Material de Obturación y Ionómeros",
-     "proveedores": ["Henry Schein", "Proclinic", "DVD Dental"]},
+     "proveedores": ["HENRY SCHEIN", "PROCLINIC", "DVD"]},
 
-    {"categoria": "Depósitos y Aparatología", "image_url": _I['impresion'],
+    {"categoria_raiz": "Depósitos y Aparatología", "subcategoria": None, "image_url": _I['impresion'],
      "linea_producto": "Materiales de Impresión (alginatos, siliconas)",
-     "proveedores": ["Henry Schein", "Proclinic", "DVD Dental", "Broker Dental"]},
+     "proveedores": ["HENRY SCHEIN", "PROCLINIC", "DVD", "BROKER"]},
 
-    {"categoria": "Depósitos y Aparatología", "image_url": _I['instrumental'],
+    {"categoria_raiz": "Depósitos y Aparatología", "subcategoria": None, "image_url": _I['instrumental'],
      "linea_producto": "Instrumental Manual y Rotatorio",
-     "proveedores": ["Henry Schein", "Proclinic", "DVD Dental", "Axis Dental", "Katia Dental"]},
+     "proveedores": ["HENRY SCHEIN", "PROCLINIC", "DVD", "AXIS", "KATIA"]},
 
-    {"categoria": "Depósitos y Aparatología", "image_url": _I['optica'],
+    {"categoria_raiz": "Depósitos y Aparatología", "subcategoria": None, "image_url": _I['optica'],
      "linea_producto": "Óptica Dental y Magnificación",
-     "proveedores": ["Akura", "Henry Schein"]},
+     "proveedores": ["AKURA", "HENRY SCHEIN"]},
 
-    {"categoria": "Depósitos y Aparatología", "image_url": _I['airflow'],
+    {"categoria_raiz": "Depósitos y Aparatología", "subcategoria": None, "image_url": _I['airflow'],
      "linea_producto": "Aparatología de Profilaxis (Airflow, scaler)",
-     "proveedores": ["EMS Dental", "Henry Schein", "Proclinic"]},
+     "proveedores": ["EMS", "HENRY SCHEIN", "PROCLINIC"]},
 
-    {"categoria": "Depósitos y Aparatología", "image_url": _I['cadcam'],
+    {"categoria_raiz": "Depósitos y Aparatología", "subcategoria": None, "image_url": _I['cadcam'],
      "linea_producto": "Equipamiento CAD-CAM (escáner, fresadora)",
-     "proveedores": ["Henry Schein", "Proclinic", "DVD Dental"]},
+     "proveedores": ["HENRY SCHEIN", "PROCLINIC", "DVD"]},
 
-    {"categoria": "Depósitos y Aparatología", "image_url": _I['rx_digital'],
+    {"categoria_raiz": "Depósitos y Aparatología", "subcategoria": None, "image_url": _I['rx_digital'],
      "linea_producto": "Radiología Digital (sensores, RVG, CBCT)",
-     "proveedores": ["Henry Schein", "Proclinic", "DVD Dental"]},
+     "proveedores": ["HENRY SCHEIN", "PROCLINIC", "DVD"]},
 
-    {"categoria": "Depósitos y Aparatología", "image_url": _I['esterilizacion'],
+    {"categoria_raiz": "Depósitos y Aparatología", "subcategoria": None, "image_url": _I['esterilizacion'],
      "linea_producto": "Desinfección y Esterilización",
-     "proveedores": ["Henry Schein", "Proclinic", "DVD Dental", "Saniswiss"]},
+     "proveedores": ["HENRY SCHEIN", "PROCLINIC", "DVD", "SANISWISS"]},
 
-    {"categoria": "Depósitos y Aparatología", "image_url": _I['antimicrobiano'],
+    {"categoria_raiz": "Depósitos y Aparatología", "subcategoria": None, "image_url": _I['antimicrobiano'],
      "linea_producto": "Soluciones Antimicrobianas y Biocidas",
-     "proveedores": ["Saniswiss", "Dentaid"]},
+     "proveedores": ["SANISWISS", "DENTAID"]},
 
-    {"categoria": "Depósitos y Aparatología", "image_url": _I['barrera'],
+    {"categoria_raiz": "Depósitos y Aparatología", "subcategoria": None, "image_url": _I['barrera'],
      "linea_producto": "Material de Barrera (guantes, mascarillas)",
-     "proveedores": ["Henry Schein", "Proclinic", "DVD Dental", "Broker Dental", "Axis Dental", "Katia Dental"]},
+     "proveedores": ["HENRY SCHEIN", "PROCLINIC", "DVD", "BROKER", "AXIS", "KATIA"]},
 
-    {"categoria": "Depósitos y Aparatología", "image_url": _I['fungible'],
+    {"categoria_raiz": "Depósitos y Aparatología", "subcategoria": None, "image_url": _I['fungible'],
      "linea_producto": "Material Fungible General",
-     "proveedores": ["Henry Schein", "Proclinic", "DVD Dental", "Broker Dental", "Katia Dental", "Axis Dental"]},
+     "proveedores": ["HENRY SCHEIN", "PROCLINIC", "DVD", "BROKER", "KATIA", "AXIS"]},
 
-    {"categoria": "Depósitos y Aparatología", "image_url": _I['sillon'],
+    {"categoria_raiz": "Depósitos y Aparatología", "subcategoria": None, "image_url": _I['sillon'],
      "linea_producto": "Sillones y Unidades Dentales",
-     "proveedores": ["Henry Schein", "Proclinic", "DVD Dental", "Endovations"]},
+     "proveedores": ["HENRY SCHEIN", "PROCLINIC", "DVD", "ENDOVATIONS"]},
 
-    {"categoria": "Depósitos y Aparatología", "image_url": _I['mobiliario'],
+    {"categoria_raiz": "Depósitos y Aparatología", "subcategoria": None, "image_url": _I['mobiliario'],
      "linea_producto": "Mobiliario Clínico",
-     "proveedores": ["Henry Schein", "Proclinic", "DVD Dental", "Endovations"]},
+     "proveedores": ["HENRY SCHEIN", "PROCLINIC", "DVD", "ENDOVATIONS"]},
 
-    {"categoria": "Depósitos y Aparatología", "image_url": _I['endodoncia_eq'],
+    {"categoria_raiz": "Depósitos y Aparatología", "subcategoria": None, "image_url": _I['endodoncia_eq'],
      "linea_producto": "Equipamiento Especializado Endodoncia",
-     "proveedores": ["Endovations"]},
+     "proveedores": ["ENDOVATIONS"]},
 
     # 2. IMPLANTOLOGÍA
-    {"categoria": "Implantología", "image_url": _I['implante'],
+    {"categoria_raiz": "Implantología", "subcategoria": None, "image_url": _I['implante'],
      "linea_producto": "Implantes Dentales",
-     "proveedores": ["ZimVie", "Straumann", "IPD", "Inibsa", "Klockner"]},
+     "proveedores": ["ZIMMER", "STRAUMANN", "IPD", "INIBSA", "KLOCKNER"]},
 
-    {"categoria": "Implantología", "image_url": _I['pilar'],
+    {"categoria_raiz": "Implantología", "subcategoria": None, "image_url": _I['pilar'],
      "linea_producto": "Pilares Protéticos",
-     "proveedores": ["ZimVie", "Straumann", "IPD", "Klockner"]},
+     "proveedores": ["ZIMMER", "STRAUMANN", "IPD", "KLOCKNER"]},
 
-    {"categoria": "Implantología", "image_url": _I['biomaterial'],
+    {"categoria_raiz": "Implantología", "subcategoria": None, "image_url": _I['biomaterial'],
      "linea_producto": "Biomateriales de Regeneración Ósea",
-     "proveedores": ["Botiss", "Klockner", "Straumann"]},
+     "proveedores": ["KLOCKNER", "STRAUMANN"]},
 
-    {"categoria": "Implantología", "image_url": _I['anest_qx'],
+    {"categoria_raiz": "Implantología", "subcategoria": None, "image_url": _I['anest_qx'],
      "linea_producto": "Anestésicos y Fungible Quirúrgico",
-     "proveedores": ["Inibsa", "Henry Schein", "Proclinic"]},
+     "proveedores": ["INIBSA", "HENRY SCHEIN", "PROCLINIC"]},
 
-    {"categoria": "Implantología", "image_url": _I['cirugia_guiada'],
+    {"categoria_raiz": "Implantología", "subcategoria": None, "image_url": _I['cirugia_guiada'],
      "linea_producto": "Planificación de Cirugía Guiada Digital",
-     "proveedores": ["BiteRight"]},
+     "proveedores": ["BITERIGHT"]},
 
-    {"categoria": "Implantología", "image_url": _I['escaneado'],
+    {"categoria_raiz": "Implantología", "subcategoria": None, "image_url": _I['escaneado'],
      "linea_producto": "Corrección y Validación de Escaneado",
      "proveedores": ["IOSFIX"]},
 
     # 3. ORTODONCIA
-    {"categoria": "Ortodoncia", "image_url": _I['brackets'],
+    {"categoria_raiz": "Ortodoncia", "subcategoria": None, "image_url": _I['brackets'],
      "linea_producto": "Brackets Metálicos y Cerámicos",
-     "proveedores": ["Imperortho", "Forestadent", "Ormco", "Ortoarea"]},
+     "proveedores": ["IMPER-ORTHO", "FORESTADENT", "ORMCO", "ORTOAREA"]},
 
-    {"categoria": "Ortodoncia", "image_url": _I['autoligado'],
+    {"categoria_raiz": "Ortodoncia", "subcategoria": None, "image_url": _I['autoligado'],
      "linea_producto": "Sistema de Brackets de Autoligado",
-     "proveedores": ["Ormco", "Forestadent", "Imperortho"]},
+     "proveedores": ["ORMCO", "FORESTADENT", "IMPER-ORTHO"]},
 
-    {"categoria": "Ortodoncia", "image_url": _I['alineador'],
+    {"categoria_raiz": "Ortodoncia", "subcategoria": None, "image_url": _I['alineador'],
      "linea_producto": "Alineadores Transparentes",
-     "proveedores": ["Ormco", "DentalMonitoring"]},
+     "proveedores": ["ORMCO"]},
 
-    {"categoria": "Ortodoncia", "image_url": _I['arcos_orto'],
+    {"categoria_raiz": "Ortodoncia", "subcategoria": None, "image_url": _I['arcos_orto'],
      "linea_producto": "Arcos, Tubos y Accesorios de Ortodoncia",
-     "proveedores": ["Imperortho", "Forestadent", "Ortoarea"]},
+     "proveedores": ["IMPER-ORTHO", "FORESTADENT", "ORTOAREA"]},
 
-    {"categoria": "Ortodoncia", "image_url": _I['retencion'],
+    {"categoria_raiz": "Ortodoncia", "subcategoria": None, "image_url": _I['retencion'],
      "linea_producto": "Retenciones y Contenciones",
-     "proveedores": ["Ortoarea", "Imperortho"]},
+     "proveedores": ["ORTOAREA", "IMPER-ORTHO"]},
 
-    {"categoria": "Ortodoncia", "image_url": _I['monit_ia'],
+    {"categoria_raiz": "Ortodoncia", "subcategoria": None, "image_url": _I['monit_ia'],
      "linea_producto": "Monitorización Remota por IA",
-     "proveedores": ["DentalMonitoring"]},
+     "proveedores": ["ORMCO"]},
 
-    {"categoria": "Ortodoncia", "image_url": _I['fungible_orto'],
+    {"categoria_raiz": "Ortodoncia", "subcategoria": None, "image_url": _I['fungible_orto'],
      "linea_producto": "Material Fungible de Ortodoncia",
-     "proveedores": ["Imperortho", "Ortoarea", "Forestadent"]},
-
+     "proveedores": ["IMPER-ORTHO", "ORTOAREA", "FORESTADENT"]},
+     
     # 4. LABORATORIO
-    {"categoria": "Laboratorio", "image_url": _I['corona_diente'],
-     "linea_producto": "Prótesis Fija sobre Diente",
-     "proveedores": ["Ceranium", "Mondental", "ConVaden"]},
+    {"categoria_raiz": "Laboratorio", "subcategoria": None, "image_url": _I['lab'], "linea_producto": "Laboratorio Dental y Prótesis", "proveedores": ["CERANIUM", "MONDENTAL", "CONVADENT", "PRODENTAL", "CUSPIDENTAL", "MOCKLAB", "ARZENDENT", "DENTEKLAB"]},
 
-    {"categoria": "Laboratorio", "image_url": _I['corona_imp'],
-     "linea_producto": "Prótesis Fija sobre Implante",
-     "proveedores": ["Ceranium", "Mondental", "ConVaden"]},
+    # 5. FINANCIERAS
+    {"categoria_raiz": "Financieras", "subcategoria": None, "image_url": _I['finanzas_emp'], "linea_producto": "Financiación de Pacientes", "proveedores": ["SABADELL CONSUMER", "KUTXABANK", "NOWON"]},
 
-    {"categoria": "Laboratorio", "image_url": _I['protesis_rem'],
-     "linea_producto": "Prótesis Removible",
-     "proveedores": ["Mondental", "ConVaden"]},
+    # 6. SERVICIOS
+    {"categoria_raiz": "Servicios", "subcategoria": "Software y Ciberseguridad", "image_url": _I['software'], "linea_producto": "Software de Gestión Clínica (HIS/PMS)", "proveedores": ["INFOMED"]},
+    {"categoria_raiz": "Servicios", "subcategoria": "Software y Ciberseguridad", "image_url": _I['software'], "linea_producto": "Firma Digital y Consentimientos", "proveedores": ["INFOMED"]},
+    {"categoria_raiz": "Servicios", "subcategoria": "Software y Ciberseguridad", "image_url": _I['cyber'], "linea_producto": "Centralita Virtual y Telefonía IP", "proveedores": ["GLOFERA"]},
+    {"categoria_raiz": "Servicios", "subcategoria": "Software y Ciberseguridad", "image_url": _I['cyber'], "linea_producto": "Ciberseguridad y Cumplimiento RGPD", "proveedores": ["GLOFERA"]},
+    {"categoria_raiz": "Servicios", "subcategoria": "Software y Ciberseguridad", "image_url": _I['cyber'], "linea_producto": "Agentes de Voz con Inteligencia Artificial", "proveedores": ["GLOFERA"]},
 
-    {"categoria": "Laboratorio", "image_url": _I['orto_lab'],
-     "linea_producto": "Ortodoncia de Laboratorio",
-     "proveedores": ["Mondental", "Ortoarea"]},
+    {"categoria_raiz": "Servicios", "subcategoria": "Gestión y marketing dental", "image_url": _I['citas_ia'], "linea_producto": "Confirmación y Gestión de Citas (WhatsApp/IA)", "proveedores": ["KOKUAI"]},
+    {"categoria_raiz": "Servicios", "subcategoria": "Gestión y marketing dental", "image_url": _I['marketing'], "linea_producto": "Marketing Digital y Consultoría Estratégica", "proveedores": ["AESINERGY"]},
+    {"categoria_raiz": "Servicios", "subcategoria": "Gestión y marketing dental", "image_url": _I['marketing'], "linea_producto": "Posicionamiento SEO Local (Google Maps)", "proveedores": ["AESINERGY"]},
+    {"categoria_raiz": "Servicios", "subcategoria": "Gestión y marketing dental", "image_url": _I['encuesta'], "linea_producto": "Encuestas de Satisfacción y Reputación (NPS)", "proveedores": ["ASTUTE CONTROL", "AESINERGY"]},
+    {"categoria_raiz": "Servicios", "subcategoria": "Gestión y marketing dental", "image_url": _I['comunicacion'], "linea_producto": "Comunicación Educativa en Sala de Espera", "proveedores": ["DIGIMEVO"]},
+    {"categoria_raiz": "Servicios", "subcategoria": "Gestión y marketing dental", "image_url": _I['rrhh'], "linea_producto": "Selección y Headhunting de Personal Clínico", "proveedores": ["TALENT SALUD"]},
+    {"categoria_raiz": "Servicios", "subcategoria": "Gestión y marketing dental", "image_url": _I['deuda'], "linea_producto": "Recuperación de Deuda de Pacientes Morosos", "proveedores": ["I-PACIENTES"]},
 
-    {"categoria": "Laboratorio", "image_url": _I['ceramica'],
-     "linea_producto": "Cerámica Dental y Materiales de Prótesis",
-     "proveedores": ["Henry Schein", "Proclinic"]},
+    {"categoria_raiz": "Servicios", "subcategoria": "Radiología UTPR y Dosimetría", "image_url": _I['radioproteccion'], "linea_producto": "Protección Radiológica (UTPR y Dosimetría)", "proveedores": ["GPR"]},
+    {"categoria_raiz": "Servicios", "subcategoria": "Radiología UTPR y Dosimetría", "image_url": _I['prl'], "linea_producto": "Prevención de Riesgos Laborales (PRL)", "proveedores": ["OTP"]},
+    {"categoria_raiz": "Servicios", "subcategoria": "Radiología UTPR y Dosimetría", "image_url": _I['prl'], "linea_producto": "Higiene Industrial y Ergonomía Clínica", "proveedores": ["OTP"]},
 
-    {"categoria": "Laboratorio", "image_url": _I['acrilico_lab'],
-     "linea_producto": "Composites y Acrílicos para Laboratorio",
-     "proveedores": ["Henry Schein", "Proclinic", "DVD Dental"]},
-
-    {"categoria": "Laboratorio", "image_url": _I['genetica'],
-     "linea_producto": "Análisis Genéticos y Microbiológicos",
-     "proveedores": ["Hussogenix"]},
-
-    # 5. SERVICIOS
-    {"categoria": "Servicios", "image_url": _I['software'],
-     "linea_producto": "Software de Gestión Clínica (HIS/PMS)",
-     "proveedores": ["Infomed"]},
-
-    {"categoria": "Servicios", "image_url": _I['citas_ia'],
-     "linea_producto": "Confirmación y Gestión de Citas por IA",
-     "proveedores": ["Kokuai"]},
-
-    {"categoria": "Servicios", "image_url": _I['comunicacion'],
-     "linea_producto": "Comunicación Educativa con Pacientes",
-     "proveedores": ["Digimevo"]},
-
-    {"categoria": "Servicios", "image_url": _I['encuesta'],
-     "linea_producto": "Encuestas de Satisfacción y Reputación Online",
-     "proveedores": ["Astute Control"]},
-
-    {"categoria": "Servicios", "image_url": _I['marketing'],
-     "linea_producto": "Marketing Digital y Consultoría",
-     "proveedores": ["Aesinergy"]},
-
-    {"categoria": "Servicios", "image_url": _I['cyber'],
-     "linea_producto": "Ciberseguridad y Centralita Cloud",
-     "proveedores": ["Ciberseguridad"]},
-
-    {"categoria": "Servicios", "image_url": _I['radioproteccion'],
-     "linea_producto": "Protección Radiológica (UTPR, dosimetría)",
-     "proveedores": ["Protección Radiológica"]},
-
-    {"categoria": "Servicios", "image_url": _I['radiodiag'],
-     "linea_producto": "Radiodiagnóstico y Estudios Radiológicos",
-     "proveedores": ["Radmedica"]},
-
-    {"categoria": "Servicios", "image_url": _I['rrhh'],
-     "linea_producto": "Selección y Headhunting de Personal",
-     "proveedores": ["Talent Salud"]},
-
-    {"categoria": "Servicios", "image_url": _I['prl'],
-     "linea_producto": "Prevención de Riesgos Laborales (PRL)",
-     "proveedores": ["OTP"]},
-
-    {"categoria": "Servicios", "image_url": _I['legal'],
-     "linea_producto": "Asesoría Jurídica, Fiscal y Laboral",
-     "proveedores": ["Roca Asociados", "Mediconsulting"]},
-
-    {"categoria": "Servicios", "image_url": _I['gestoria'],
-     "linea_producto": "Gestoría Especializada en Clínicas",
-     "proveedores": ["VDOBLE"]},
-
-    {"categoria": "Servicios", "image_url": _I['seguros'],
-     "linea_producto": "Seguros de Clínica Dental",
-     "proveedores": ["Martín y Cachón"]},
-
-    {"categoria": "Servicios", "image_url": _I['deuda'],
-     "linea_producto": "Recuperación de Deuda de Pacientes",
-     "proveedores": ["IDH Platform"]},
-
-    # 6. FINANCIERAS
-    {"categoria": "Financieras", "image_url": _I['financiacion'],
-     "linea_producto": "Financiación a Pacientes",
-     "proveedores": ["Sabadell Consumer", "Kutxabank", "Nowon"]},
-
-    {"categoria": "Financieras", "image_url": _I['multifinanciera'],
-     "linea_producto": "Plataforma Multifinanciera",
-     "proveedores": ["Nowon"]},
-
-    {"categoria": "Financieras", "image_url": _I['finanzas_emp'],
-     "linea_producto": "Financiación Empresarial para Clínicas",
-     "proveedores": ["Kutxabank"]},
+    {"categoria_raiz": "Servicios", "subcategoria": "Gestoría y Seguros", "image_url": _I['gestoria'], "linea_producto": "Asesoría Fiscal y Contable", "proveedores": ["ROCA ASOCIADOS", "MEDICONSULTING", "VDOBLE"]},
+    {"categoria_raiz": "Servicios", "subcategoria": "Gestoría y Seguros", "image_url": _I['gestoria'], "linea_producto": "Asesoría Laboral (Nóminas y Contratos)", "proveedores": ["ROCA ASOCIADOS", "MEDICONSULTING", "VDOBLE"]},
+    {"categoria_raiz": "Servicios", "subcategoria": "Gestoría y Seguros", "image_url": _I['legal'], "linea_producto": "Asesoría Societaria y Legal", "proveedores": ["ROCA ASOCIADOS", "MEDICONSULTING"]},
+    {"categoria_raiz": "Servicios", "subcategoria": "Gestoría y Seguros", "image_url": _I['seguros'], "linea_producto": "Seguro de Responsabilidad Civil Profesional", "proveedores": ["MARTÍN Y CACHÓN"]},
+    {"categoria_raiz": "Servicios", "subcategoria": "Gestoría y Seguros", "image_url": _I['seguros'], "linea_producto": "Seguro de Clínica (Continente y Contenido)", "proveedores": ["MARTÍN Y CACHÓN"]},
 
     # 7. OTROS
-    {"categoria": "Otros", "image_url": _I['dea'],
-     "linea_producto": "Desfibriladores (DEA/DESA)",
-     "proveedores": ["Adiemed"]},
-
-    {"categoria": "Otros", "image_url": _I['maletin'],
-     "linea_producto": "Maletín de Reanimación / Emergencias",
-     "proveedores": ["Maletín de Reanimación"]},
-
-    {"categoria": "Otros", "image_url": _I['uniforme'],
-     "linea_producto": "Uniformes y Ropa Laboral",
-     "proveedores": ["Cherokee"]},
-
-    {"categoria": "Otros", "image_url": _I['aire'],
-     "linea_producto": "Purificación de Aire y Control Ambiental",
-     "proveedores": ["Wellisair"]},
-
-    {"categoria": "Otros", "image_url": _I['interiorismo'],
-     "linea_producto": "Interiorismo y Diseño de Clínicas",
-     "proveedores": ["Santacreu"]},
-
-    {"categoria": "Otros", "image_url": _I['navidad'],
-     "linea_producto": "Lotes y Cestas de Navidad",
-     "proveedores": ["Sadival"]},
-
-    {"categoria": "Otros", "image_url": _I['oficina'],
-     "linea_producto": "Material de Oficina y Mobiliario",
-     "proveedores": ["Bruneau"]},
+    {"categoria_raiz": "Otros", "subcategoria": None, "image_url": _I['radiodiag'], "linea_producto": "Radiodiagnóstico Externo (CBCT, Ortopantomografía)", "proveedores": ["RADMEDICA"]},
+    {"categoria_raiz": "Otros", "subcategoria": None, "image_url": _I['navidad'], "linea_producto": "Lotes y Cestas de Navidad Corporativas", "proveedores": ["SADIVAL"]},
 ]
 
 
@@ -419,30 +326,40 @@ def run():
     # ── Wipe existing marketplace data ────────────────────────────────────────
     n_ofertas, _ = ProveedorOferta.objects.all().delete()
     n_productos, _ = Producto.objects.all().delete()
-    print(f"Borrados: {n_productos} Producto(s), {n_ofertas} ProveedorOferta(s)")
+    n_categorias, _ = Categoria.objects.all().delete()
+    print(f"Borrados: {n_categorias} Categoria(s), {n_productos} Producto(s), {n_ofertas} ProveedorOferta(s)")
 
     productos_creados = 0
     ofertas_creadas = 0
     warnings = []
 
     cat_cache = {}
-    prov_cache = {}
 
     for entry in MASTER_TAXONOMY:
-        cat_nombre = entry['categoria']
+        cat_raiz_nombre = entry['categoria_raiz']
+        subcat_nombre = entry.get('subcategoria')
         linea = entry['linea_producto']
         image_url = entry.get('image_url', '')
         prov_nombres = entry['proveedores']
 
         # ── 1. Categoria ──────────────────────────────────────────────────
-        if cat_nombre not in cat_cache:
-            try:
-                cat = Categoria.objects.get(nombre__iexact=cat_nombre)
-            except Categoria.DoesNotExist:
-                cat = Categoria.objects.create(nombre=cat_nombre)
-                print(f"  [CAT] Creada categoría: {cat_nombre}")
-            cat_cache[cat_nombre] = cat
-        cat = cat_cache[cat_nombre]
+        if cat_raiz_nombre not in cat_cache:
+            cat_raiz, created = Categoria.objects.get_or_create(nombre=cat_raiz_nombre, parent=None)
+            if created:
+                print(f"  [CAT] Creada categoría raíz: {cat_raiz_nombre}")
+            cat_cache[cat_raiz_nombre] = cat_raiz
+        cat_raiz = cat_cache[cat_raiz_nombre]
+            
+        if subcat_nombre:
+            subcat_key = f"{cat_raiz_nombre}::{subcat_nombre}"
+            if subcat_key not in cat_cache:
+                cat_final, created_sub = Categoria.objects.get_or_create(nombre=subcat_nombre, parent=cat_raiz)
+                if created_sub:
+                    print(f"  [CAT] Creada subcategoría: {subcat_nombre} (bajo {cat_raiz_nombre})")
+                cat_cache[subcat_key] = cat_final
+            cat_final = cat_cache[subcat_key]
+        else:
+            cat_final = cat_raiz
 
         # ── 2. Producto ────────────────────────────────────────────────────
         producto, created = Producto.objects.get_or_create(
@@ -450,7 +367,7 @@ def run():
             marca='',
             defaults={
                 'linea_producto': linea,
-                'categoria': cat,
+                'categoria': cat_final,
                 'imagen_url': image_url,
                 'activo': True,
             }
@@ -459,8 +376,8 @@ def run():
             productos_creados += 1
         else:
             update_fields = []
-            if producto.categoria_id != cat.pk:
-                producto.categoria = cat
+            if producto.categoria_id != cat_final.pk:
+                producto.categoria = cat_final
                 update_fields.append('categoria')
             if producto.imagen_url != image_url:
                 producto.imagen_url = image_url
@@ -470,23 +387,27 @@ def run():
 
         # ── 3. Proveedores ────────────────────────────────────────────────
         for prov_nombre in prov_nombres:
-            if prov_nombre not in prov_cache:
-                matches = Proveedor.objects.filter(nombre__icontains=prov_nombre)
-                if matches.count() == 1:
-                    prov_cache[prov_nombre] = matches.first()
-                elif matches.count() > 1:
-                    prov_cache[prov_nombre] = min(matches, key=lambda p: len(p.nombre))
-                    warnings.append(
-                        f"WARN: '{prov_nombre}' → múltiples coincidencias, "
-                        f"usando '{prov_cache[prov_nombre].nombre}'"
-                    )
-                else:
-                    prov_cache[prov_nombre] = None
-                    warnings.append(f"WARN: Proveedor no encontrado en BD: '{prov_nombre}'")
+            matches = Proveedor.objects.filter(nombre__icontains=prov_nombre)
+            if matches.count() == 1:
+                proveedor = matches.first()
+            elif matches.count() > 1:
+                proveedor = min(matches, key=lambda p: len(p.nombre))
+                warnings.append(
+                    f"WARN: '{prov_nombre}' tiene múltiples coincidencias, "
+                    f"usando '{proveedor.nombre}'"
+                )
+            else:
+                proveedor = Proveedor.objects.create(
+                    nombre=prov_nombre,
+                    ahorro_estimado=None
+                )
+                print(f"  [PROV] Creado proveedor dinámicamente: {prov_nombre}")
+                warnings.append(f"WARN: Proveedor creado dinámicamente en BD: '{prov_nombre}'")
 
-            proveedor = prov_cache[prov_nombre]
-            if proveedor is None:
-                continue
+            # Re-vincular el proveedor a las categorías creadas
+            proveedor.categorias.add(cat_final)
+            if cat_raiz != cat_final:
+                proveedor.categorias.add(cat_raiz)
 
             sku = f"{slugify(proveedor.nombre)}__{slugify(linea)}"
             url_compra = build_url(proveedor, linea)
@@ -509,18 +430,17 @@ def run():
 
     print()
     if warnings:
-        print("─── Avisos ───────────────────────────────────────")
+        print("--- Avisos ---------------------------------------")
         for w in warnings:
             print(f"  {w}")
         print()
 
-    print("─── Resumen ──────────────────────────────────────")
+    print("--- Resumen --------------------------------------")
     print(f"  Productos creados   : {productos_creados}")
     print(f"  Con imagen URL      : {productos_con_imagen}")
     print(f"  Ofertas creadas     : {ofertas_creadas}")
     print(f"  Avisos              : {len(warnings)}")
-    print("──────────────────────────────────────────────────")
-
+    print("--------------------------------------------------")
 
 if __name__ == '__main__':
     run()

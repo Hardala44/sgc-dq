@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import MarketplaceProductCard from '../components/MarketplaceProductCard';
@@ -42,7 +42,7 @@ export const MarketplaceSearch = () => {
       // Filter out non-products if the global search returns mixed types
       // The backend /api/buscar/ specifically returns a grouped Product list exactly as needed,
       // but let's ensure it maps cleanly.
-      const productItems = items.filter((item: any) => item.ofertas !== undefined);
+      const productItems = items.filter((item: { ofertas?: unknown }) => item.ofertas !== undefined);
       setResults(productItems);
     } catch (err) {
       console.error(err);

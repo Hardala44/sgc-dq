@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Copy, Check, PhoneCall, Mail, Globe } from 'lucide-react';
-import toast from 'react-hot-toast';
+import React, { useState } from 'react';
+import { PhoneCall, Mail, Globe, ChevronRight, Package } from 'lucide-react';
 
 interface ProviderCardProps {
   proveedor: {
@@ -10,20 +9,45 @@ interface ProviderCardProps {
     url_catalogo: string;
     codigo_descuento: string;
     tipo_interaccion: 'link' | 'lead_form';
+    /** Categorías maestras (strings) — internal Excel tags hidden from UI */
     categorias: string[];
+    /** Categoría principal visible (from financial Excel sync) */
+    categoria_principal?: string | null;
+    /** Savings ratio, e.g. 0.15 means 15% */
+    ahorro_estimado?: number | string | null;
+    /** Count of distinct marketplace product lines */
+    num_lineas_producto?: number;
     contacto_nombre?: string;
     contacto_telefono?: string;
     contacto_email?: string;
     url_web?: string;
+    logo_url?: string;
     condiciones_especiales?: string;
   };
+  onVerCatalogo?: (id: string | number) => void;
 }
 
-const ProviderCard: React.FC<ProviderCardProps> = ({ proveedor }) => {
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
-  // Get domain for Clearbit logo
+/**
+ * Formats a savings ratio (0.15) → "15%"
+ */
+function formatSavings(raw: number | string | null | undefined): string | null {
+  if (raw == null || raw === '') return null;
+  const n = typeof raw === 'string' ? parseFloat(raw) : raw;
+  if (isNaN(n) || n <= 0) return null;
+  // If stored as 0-1 range convert; if > 1 assume already a percentage
+  const pct = n <= 1 ? n * 100 : n;
+  return `${pct % 1 === 0 ? pct.toFixed(0) : pct.toFixed(1)}%`;
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
+const ProviderCard: React.FC<ProviderCardProps> = ({ proveedor, onVerCatalogo }) => {
+
+  // ── Logo resolution with 2-level fallback ──────────────────────────────────
   const getDomain = () => {
-    if (proveedor.contacto_email && proveedor.contacto_email.includes('@')) {
+    if (proveedor.contacto_email?.includes('@')) {
       return proveedor.contacto_email.split('@')[1];
     }
     if (proveedor.url_web) {
@@ -33,108 +57,196 @@ const ProviderCard: React.FC<ProviderCardProps> = ({ proveedor }) => {
   };
 
   const domain = getDomain();
-  
-  const [logoSrc, setLogoSrc] = useState<string | null>(null);
-  const [logoErrorLevel, setLogoErrorLevel] = useState<number>(0);
+  const [logoErrorLevel, setLogoErrorLevel] = useState(0);
+  const [lastDomain, setLastDomain] = useState(domain);
 
-  useEffect(() => {
-    if (domain) {
-      setLogoSrc(`https://logo.clearbit.com/${domain}`);
-      setLogoErrorLevel(0);
-    } else {
-      setLogoSrc(null);
-    }
-  }, [domain]);
+  if (domain !== lastDomain) {
+    setLastDomain(domain);
+    setLogoErrorLevel(0);
+  }
 
-  const handleLogoError = () => {
-    if (logoErrorLevel === 0 && domain) {
-      // Clearbit failed, try Google Favicon
-      setLogoSrc(`https://www.google.com/s2/favicons?domain=${domain}&sz=128`);
-      setLogoErrorLevel(1);
-    } else {
-      // Both failed, fallback to text avatar
-      setLogoSrc(null);
+  const externalLogo = proveedor.logo_url || null;
+  const logoSrc = externalLogo
+    ? externalLogo
+    : domain
+    ? logoErrorLevel === 0
+      ? `https://logo.clearbit.com/${domain}`
+      : logoErrorLevel === 1
+      ? `https://www.google.com/s2/favicons?domain=${domain}&sz=128`
+      : null
+    : null;
+
+  const handleLogoError = () => setLogoErrorLevel((l) => Math.min(l + 1, 2));
+
+  // ── Derived values ─────────────────────────────────────────────────────────
+  const savingsLabel = formatSavings(proveedor.ahorro_estimado);
+  const numLineas    = proveedor.num_lineas_producto ?? 0;
+  const initial      = proveedor.nombre.charAt(0).toUpperCase();
+
+  // Determine CTA link/action
+  const ctaHref = proveedor.url_catalogo || proveedor.url_web || null;
+
+  const handleCta = () => {
+    if (onVerCatalogo) {
+      onVerCatalogo(proveedor.id);
+    } else if (ctaHref) {
+      window.open(ctaHref, '_blank', 'noopener noreferrer');
     }
   };
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="bg-white rounded-xl p-5 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-slate-200 flex flex-col h-full group">
-      
-      {/* Header section with Centered Logo */}
-      <div className="flex flex-col items-center justify-center mb-4 h-24 w-full">
-        {logoSrc ? (
-          <img 
-            src={logoSrc} 
-            alt={`Logo de ${proveedor.nombre}`} 
-            loading="lazy" 
-            className="max-h-16 max-w-[80%] object-contain drop-shadow-sm group-hover:scale-105 transition-transform"
+    <div className="
+      relative bg-white rounded-2xl overflow-hidden border border-slate-200/80
+      shadow-sm hover:shadow-xl hover:-translate-y-1
+      transition-all duration-300 flex flex-col h-full group
+    ">
+
+      {/* ── Savings Badge ──────────────────────────────────────────────── */}
+      {savingsLabel && (
+        <div className="absolute top-3 right-3 z-10">
+          <span className="
+            inline-flex items-center gap-1 px-2.5 py-1
+            bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest
+            rounded-full shadow-md shadow-emerald-200
+          ">
+            <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor">
+              <path d="M4 0L5.5 2.5H8L5.75 4.25L6.5 7L4 5.5L1.5 7L2.25 4.25L0 2.5H2.5L4 0Z"/>
+            </svg>
+            Acuerdo DQ: {savingsLabel} Dto.
+          </span>
+        </div>
+      )}
+
+      {/* ── Logo area ──────────────────────────────────────────────────── */}
+      <div className="
+        flex items-center justify-center h-32 px-6 pt-6 pb-4
+        bg-gradient-to-b from-slate-50 to-white
+      ">
+        {logoSrc && logoErrorLevel < 2 ? (
+          <img
+            src={logoSrc}
+            alt={`Logo de ${proveedor.nombre}`}
+            loading="lazy"
+            className="max-h-16 max-w-[75%] object-contain drop-shadow-sm group-hover:scale-105 transition-transform duration-300"
             onError={handleLogoError}
           />
         ) : (
-          <div className="h-16 w-16 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 font-bold text-2xl shadow-inner">
-            {proveedor.nombre.charAt(0).toUpperCase()}
+          <div className="
+            h-16 w-16 rounded-2xl
+            bg-gradient-to-br from-klein-100 to-slate-100
+            flex items-center justify-center
+            text-2xl font-black text-klein-600 shadow-inner
+          ">
+            {initial}
           </div>
         )}
       </div>
 
-      <div className="flex-grow flex flex-col items-center text-center">
-        <h3 className="text-lg font-bold text-slate-800 tracking-tight leading-tight mb-2">{proveedor.nombre}</h3>
-        
-        <p className="text-slate-600 text-sm font-light tracking-tight leading-relaxed line-clamp-3 mb-5">
-          {proveedor.descripcion_larga || 'Experiencia y profesionalidad garantizada en The Dental Quality Network.'}
+      {/* ── Body ───────────────────────────────────────────────────────── */}
+      <div className="flex-grow flex flex-col px-5 pb-4">
+
+        {/* Name */}
+        <h3 className="text-base font-bold text-slate-900 tracking-tight leading-snug text-center mb-1">
+          {proveedor.nombre}
+        </h3>
+
+        {/* Product lines counter — replaces the internal Excel category tag */}
+        {numLineas > 0 && (
+          <div className="flex items-center justify-center gap-1.5 mb-3">
+            <Package size={12} className="text-klein-500 flex-shrink-0" />
+            <span className="text-[11px] font-semibold text-klein-600 tracking-tight">
+              {numLineas} {numLineas === 1 ? 'línea de producto disponible' : 'líneas de producto disponibles'}
+            </span>
+          </div>
+        )}
+
+        {/* Description */}
+        <p className="text-slate-500 text-xs leading-relaxed line-clamp-3 text-center mb-4 flex-grow">
+          {proveedor.descripcion_larga || 'Proveedor verificado en la Red DentalQuality.'}
         </p>
+
+        {/* Conditions pill */}
+        {proveedor.condiciones_especiales && (
+          <div className="flex justify-center mb-3">
+            <span className="
+              inline-block px-3 py-1.5
+              bg-sky-50 border border-sky-100 text-sky-700
+              text-[10px] font-bold uppercase tracking-wider rounded-full
+              text-center leading-tight
+            ">
+              {proveedor.condiciones_especiales}
+            </span>
+          </div>
+        )}
       </div>
 
-      <div className="mt-auto pt-4 border-t border-slate-100 w-full">
-        <div className="flex flex-col gap-2.5">
-          
-          {proveedor.condiciones_especiales && (
-            <div className="flex flex-col bg-sky-50 px-3 py-2.5 rounded-lg border border-sky-100 mb-2 items-center text-center">
-              <span className="text-[10px] text-sky-600/80 font-bold tracking-wider uppercase mb-0.5">Condiciones Dental Quality</span>
-              <span className="text-xs font-semibold text-sky-900 leading-tight">
-                {proveedor.condiciones_especiales}
-              </span>
-            </div>
-          )}
-          
-          {/* Action Buttons */}
-          <div className="flex flex-col gap-2 w-full">
-            {proveedor.contacto_telefono && (
-              <a
-                href={`tel:${proveedor.contacto_telefono.replace(/ /g, '')}`}
-                className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors shadow-sm"
-              >
-                <PhoneCall size={14} className="text-slate-400" /> Llamar: {proveedor.contacto_telefono}
-              </a>
-            )}
-            
-            {proveedor.contacto_email && (
-              <a
-                href={`mailto:${proveedor.contacto_email}`}
-                className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors shadow-sm"
-              >
-                <Mail size={14} className="text-slate-400" /> Correo: {proveedor.contacto_email}
-              </a>
-            )}
+      {/* ── Footer / CTA ───────────────────────────────────────────────── */}
+      <div className="px-5 pb-5 pt-3 border-t border-slate-100 mt-auto">
 
-            {proveedor.url_web && (
-              <a
-                href={proveedor.url_web}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 py-2.5 hover:bg-slate-50 border border-transparent text-slate-500 hover:text-slate-700 text-[11px] uppercase tracking-widest font-bold rounded-lg transition-colors mt-1"
-              >
-                <Globe size={12} /> Visitar sitio web
-              </a>
-            )}
-          </div>
-          
-          {!proveedor.contacto_telefono && !proveedor.contacto_email && !proveedor.url_web && (
-               <div className="text-center text-slate-400 text-[10px] uppercase tracking-widest font-bold py-3 bg-slate-50 rounded-lg border border-slate-100 border-dashed">
-                   Perfil Verificado
-               </div>
+        {/* Primary CTA */}
+        <button
+          onClick={handleCta}
+          className="
+            w-full flex items-center justify-center gap-2
+            py-2.5 rounded-xl
+            bg-klein-600 hover:bg-klein-700 active:scale-[0.98]
+            text-white text-xs font-bold uppercase tracking-widest
+            shadow-sm shadow-klein-200 transition-all duration-200
+          "
+        >
+          Ver Acuerdos
+          <ChevronRight size={13} />
+        </button>
+
+        {/* Secondary contact row */}
+        <div className="flex items-center justify-center gap-3 mt-3">
+          {proveedor.contacto_telefono && (
+            <a
+              href={`tel:${proveedor.contacto_telefono.replace(/ /g, '')}`}
+              title={`Llamar: ${proveedor.contacto_telefono}`}
+              className="
+                flex items-center justify-center w-8 h-8 rounded-lg
+                bg-slate-100 hover:bg-slate-200 text-slate-500
+                transition-colors
+              "
+            >
+              <PhoneCall size={14} />
+            </a>
           )}
-          
+          {proveedor.contacto_email && (
+            <a
+              href={`mailto:${proveedor.contacto_email}`}
+              title={proveedor.contacto_email}
+              className="
+                flex items-center justify-center w-8 h-8 rounded-lg
+                bg-slate-100 hover:bg-slate-200 text-slate-500
+                transition-colors
+              "
+            >
+              <Mail size={14} />
+            </a>
+          )}
+          {proveedor.url_web && (
+            <a
+              href={proveedor.url_web}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Visitar sitio web"
+              className="
+                flex items-center justify-center w-8 h-8 rounded-lg
+                bg-slate-100 hover:bg-slate-200 text-slate-500
+                transition-colors
+              "
+            >
+              <Globe size={14} />
+            </a>
+          )}
+          {!proveedor.contacto_telefono && !proveedor.contacto_email && !proveedor.url_web && (
+            <span className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">
+              Perfil Verificado
+            </span>
+          )}
         </div>
       </div>
     </div>

@@ -34,6 +34,7 @@ const formatCurrency = (value: number) =>
 
 type ViewMode = 'fugas' | 'riesgo';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const CustomTooltip = ({ active, payload, viewMode }: any) => {
     if (active && payload && payload.length) {
         const data = payload[0].payload as DiagnosticCategory;
@@ -85,13 +86,11 @@ const InvestmentDeepDive: React.FC<Props> = ({ isOpen, onClose, data }) => {
         .filter(d => d.status === 'low' && d.benchmark_target !== null)
         .sort((a, b) => (a.benchmark_target! - a.total_spend) - (b.benchmark_target! - b.total_spend));
 
-    // For the goal reference line in riesgo view: use the max benchmark target
-    const maxBenchmark = riesgoData.reduce((max, d) => Math.max(max, d.benchmark_target ?? 0), 0);
 
     const activeData = viewMode === 'fugas' ? leakageData : riesgoData;
     const chartDataKey = viewMode === 'fugas' ? 'leak_amount' : 'total_spend';
 
-    const getBarColor = (entry: DiagnosticCategory) => {
+    const getBarColor = () => {
         if (viewMode === 'fugas') return '#f43f5e'; // rose-500
         return '#fbbf24'; // amber-400
     };
@@ -244,8 +243,8 @@ const InvestmentDeepDive: React.FC<Props> = ({ isOpen, onClose, data }) => {
                                             />
                                         )}
                                         <Bar dataKey={chartDataKey} radius={[0, 6, 6, 0]}>
-                                            {activeData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={getBarColor(entry)} />
+                                            {activeData.map((_, index) => (
+                                                <Cell key={`cell-${index}`} fill={getBarColor()} />
                                             ))}
                                         </Bar>
                                     </BarChart>

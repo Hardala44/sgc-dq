@@ -24,8 +24,7 @@ const Header = () => {
         ? `${authUser.first_name} ${authUser.last_name}` 
         : authUser.email || authUser.username;
         
-    // Assuming clinic info might be added later, fallback for now
-    const displayClinic = (authUser as any).clinica_nombre || "Clínica Dental Premium";
+    // Clinic name may be extended later via the authUser profile payload
     
     // Get up to 2 characters for initials
     const initial = displayName.substring(0, 2).toUpperCase();

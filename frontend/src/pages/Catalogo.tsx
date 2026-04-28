@@ -48,7 +48,6 @@ const Catalogo = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [searchProductos, setSearchProductos] = useState<ProductoMarketplace[]>([]);
     const [searchProveedores, setSearchProveedores] = useState<Proveedor[]>([]);
-    const [activeResultTab, setActiveResultTab] = useState<ResultTab>('productos');
 
     // ── UI State ──────────────────────────────────────────────────────────────
     const [viewMode, setViewMode] = useState<ViewMode>('catalog');
@@ -57,8 +56,8 @@ const Catalogo = () => {
     const [error, setError] = useState('');
     const [selectedProducto, setSelectedProducto] = useState<ProductoMarketplace | null>(null);
 
-    // ── Category tab (providers vs products) ─────────────────────────────────
-    const [categoryTab, setCategoryTab] = useState<ResultTab>('proveedores');
+    // ── Global Tab (providers vs products) ───────────────────────────────────
+    const [globalTab, setGlobalTab] = useState<ResultTab>('productos');
 
     // ─────────────────────────────────────────────────────────────────────────
     useEffect(() => {
@@ -126,7 +125,6 @@ const Catalogo = () => {
         setError('');
         setSelectedCategory(category);
         setViewMode('catalog');
-        setCategoryTab('proveedores'); // default tab
         
         // Ensure its parent is expanded if it has one
         if (category.parent) {
@@ -142,10 +140,6 @@ const Catalogo = () => {
             ]);
             setCategoryProviders(providers);
             setCategoryProductos(productos);
-            // Auto-switch tab to products if there are no providers but products exist
-            if (providers.length === 0 && productos.length > 0) {
-                setCategoryTab('productos');
-            }
         } catch (err) {
             setError('Error al cargar contenido de la categoría.');
             console.error(err);
@@ -155,7 +149,7 @@ const Catalogo = () => {
     };
 
     // ── Search result handler ─────────────────────────────────────────────────
-    const handleSearchResult = (type: 'categoria' | 'proveedor' | 'oferta' | 'producto', item: any) => {
+    const handleSearchResult = (type: 'categoria' | 'proveedor' | 'oferta' | 'producto', item: unknown) => {
         if (type === 'categoria') {
             handleCategoryClick(item as Categoria);
         } else if (type === 'producto') {
@@ -166,19 +160,27 @@ const Catalogo = () => {
             setSearchQuery(item.nombre);
             setSearchProveedores([item as Proveedor]);
             setSearchProductos([]);
-            setActiveResultTab('proveedores');
+            setGlobalTab('proveedores');
             setViewMode('search');
         } else if (type === 'oferta') {
             setSearchQuery(item.proveedor_nombre || 'Oferta');
             setSearchProveedores([]);
             setSearchProductos([]);
-            setActiveResultTab('proveedores');
+            setGlobalTab('proveedores');
             setViewMode('search');
         }
     };
 
     // ── Derived ───────────────────────────────────────────────────────────────
-    const mainCategories = categories.filter(c => c.parent === null).sort((a,b)=>a.id-b.id);
+    const sortCategories = (a: Categoria, b: Categoria) => {
+        const isADeposito = normalize(a.nombre).includes('deposito');
+        const isBDeposito = normalize(b.nombre).includes('deposito');
+        if (isADeposito && !isBDeposito) return -1;
+        if (!isADeposito && isBDeposito) return 1;
+        return a.nombre.localeCompare(b.nombre);
+    };
+
+    const mainCategories = categories.filter(c => c.parent === null).sort(sortCategories);
 
     // Accent-insensitive client filter applied on top of API search results
     const normalizedQuery = normalize(searchQuery);
@@ -205,7 +207,7 @@ const Catalogo = () => {
     // ── Sidebar Renderer ──────────────────────────────────────────────────────
     const renderSidebarCategory = (cat: Categoria) => {
         const isSelected = selectedCategory?.id === cat.id;
-        const children = categories.filter(c => c.parent === cat.id).sort((a,b)=>a.id-b.id);
+        const children = categories.filter(c => c.parent === cat.id).sort(sortCategories);
         const hasChildren = children.length > 0;
         const isExpanded = expandedParents.includes(cat.id);
 
@@ -256,27 +258,53 @@ const Catalogo = () => {
 
     // ─────────────────────────────────────────────────────────────────────────
     return (
-        <div className="bg-[#F7F7F7] min-h-screen pb-16 relative font-sans">
-            {/* ── Hero Banner ── */}
-            <div className="pt-10 pb-12 px-6 md:px-12 mb-8 bg-[#F7F7F7]">
-                <div className="relative z-10 max-w-4xl mx-auto flex flex-col items-center justify-center text-center space-y-6">
-                    <div className="space-y-2 mt-4">
-                        <h1 className="text-3xl md:text-5xl text-black font-bold tracking-tight">
+        <div className="bg-[#F7F7F7] min-h-screen pb-16 relative font-sans -mx-6 md:-mx-8 lg:-mx-10">
+            {/* ── Compact Header ── */}
+            <div className="pt-8 pb-6 px-6 md:px-8 lg:px-10 bg-white border-b border-slate-200 mb-6 sticky top-0 z-30 shadow-sm">
+                <div className="w-full flex flex-col md:flex-row items-center justify-between gap-4">
+                    
+                    <div className="flex-shrink-0">
+                        <h1 className="text-2xl text-black font-bold tracking-tight">
                             Directorio <span className="font-light text-slate-500 italic">Odontológico</span>
                         </h1>
-                        <p className="text-slate-500 text-sm max-w-xl mx-auto font-medium tracking-tight">
-                            Encuentra a los mejores proveedores homologados, descubre ofertas exclusivas y optimiza tus compras clínicas.
-                        </p>
                     </div>
 
-                    <div className="relative w-full max-w-2xl mx-auto mt-6 px-2">
-                        <GlobalSearch onSelectResult={handleSearchResult} />
+                    <div className="flex-1 flex flex-col sm:flex-row items-center gap-4 w-full md:max-w-3xl">
+                        <div className="flex-1 w-full">
+                            <GlobalSearch onSelectResult={handleSearchResult} />
+                        </div>
+                        
+                        {/* ── Modern Toggle ── */}
+                        <div className="flex-shrink-0 flex items-center bg-slate-100 rounded-full p-1 border border-slate-200">
+                            <button
+                                onClick={() => setGlobalTab('productos')}
+                                className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${
+                                    globalTab === 'productos'
+                                        ? 'bg-white text-black shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                            >
+                                <Package size={16} />
+                                Explorar Productos
+                            </button>
+                            <button
+                                onClick={() => setGlobalTab('proveedores')}
+                                className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${
+                                    globalTab === 'proveedores'
+                                        ? 'bg-white text-black shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                            >
+                                <Building2 size={16} />
+                                Proveedores DQ
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* ── Main Layout (Sidebar + Content) ── */}
-            <div className="max-w-[1400px] mx-auto px-6">
+            <div className="w-full px-6 md:px-8 lg:px-10">
                 {error && (
                     <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-8 font-medium text-center">
                         {error}
@@ -327,7 +355,7 @@ const Catalogo = () => {
                             {viewMode === 'catalog' && selectedCategory ? (
                                 /* ───────────── VIEW: Catalog Details ───────────── */
                                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 bg-white rounded-[2rem] p-6 sm:p-10 shadow-[0_4px_32px_-12px_rgba(0,0,0,0.05)] border border-slate-100 min-h-[600px]">
-                                    <div className="mb-10">
+                                    <div className="mb-8">
                                         <h2 className="text-3xl font-bold text-black tracking-tight">
                                             {selectedCategory.nombre}
                                         </h2>
@@ -336,31 +364,11 @@ const Catalogo = () => {
                                         )}
                                     </div>
 
-                                    {/* ── Tabs ── */}
-                                    <div className="flex items-center gap-4 mb-10 border-b border-slate-100 pb-px">
-                                        <TabButton
-                                            id="tab-proveedores"
-                                            active={categoryTab === 'proveedores'}
-                                            onClick={() => setCategoryTab('proveedores')}
-                                            icon={<Building2 size={16} />}
-                                            label="Proveedores Verificados"
-                                            count={categoryProviders.length}
-                                        />
-                                        <TabButton
-                                            id="tab-productos"
-                                            active={categoryTab === 'productos'}
-                                            onClick={() => setCategoryTab('productos')}
-                                            icon={<Package size={16} />}
-                                            label="Catálogo"
-                                            count={categoryProductos.length}
-                                        />
-                                    </div>
-
                                     {loadingContent ? (
                                         <div className="flex justify-center items-center py-32">
                                             <Loader2 className="w-8 h-8 animate-spin text-klein-300" />
                                         </div>
-                                    ) : categoryTab === 'proveedores' ? (
+                                    ) : globalTab === 'proveedores' ? (
                                         /* Providers grid */
                                         categoryProviders.length > 0 ? (
                                             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -392,7 +400,7 @@ const Catalogo = () => {
                             ) : viewMode === 'search' ? (
                                 /* ───────────── VIEW: Search Results ───────────── */
                                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 bg-white rounded-[2rem] p-6 sm:p-10 shadow-[0_4px_32px_-12px_rgba(0,0,0,0.05)] border border-slate-100 min-h-[600px]">
-                                    <div className="flex items-center justify-between mb-10 pb-6 border-b border-slate-100">
+                                    <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-100">
                                         <div>
                                             <h2 className="text-3xl font-bold text-black tracking-tight">
                                                 Resultados de búsqueda
@@ -414,27 +422,7 @@ const Catalogo = () => {
                                         </button>
                                     </div>
 
-                                    {/* Tabs */}
-                                    <div className="flex items-center gap-4 mb-10 border-b border-slate-100">
-                                        <TabButton
-                                            id="search-tab-productos"
-                                            active={activeResultTab === 'productos'}
-                                            onClick={() => setActiveResultTab('productos')}
-                                            icon={<Package size={16} />}
-                                            label="Productos"
-                                            count={searchProductos.length}
-                                        />
-                                        <TabButton
-                                            id="search-tab-proveedores"
-                                            active={activeResultTab === 'proveedores'}
-                                            onClick={() => setActiveResultTab('proveedores')}
-                                            icon={<Building2 size={16} />}
-                                            label="Proveedores"
-                                            count={searchProveedores.length}
-                                        />
-                                    </div>
-
-                                    {activeResultTab === 'productos' ? (
+                                    {globalTab === 'productos' ? (
                                         filteredSearchProductos.length > 0 ? (
                                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                                 {filteredSearchProductos.map(producto => (
@@ -476,33 +464,6 @@ const Catalogo = () => {
 };
 
 // ─── Small shared sub-components ──────────────────────────────────────────────
-
-const TabButton: React.FC<{
-    id: string;
-    active: boolean;
-    onClick: () => void;
-    icon: React.ReactNode;
-    label: string;
-    count: number;
-}> = ({ id, active, onClick, icon, label, count }) => (
-    <button
-        id={id}
-        onClick={onClick}
-        className={`flex items-center gap-2.5 px-4 py-3 text-[13px] font-bold border-b-2 transition-all -mb-px ${
-            active
-                ? 'border-klein-600 text-klein-600'
-                : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
-        }`}
-    >
-        {icon}
-        <span className="uppercase tracking-widest">{label}</span>
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums ml-1 transition-colors ${
-            active ? 'bg-klein-50 text-klein-600' : 'bg-slate-100 text-slate-500'
-        }`}>
-            {count}
-        </span>
-    </button>
-);
 
 const EmptyState: React.FC<{ icon: React.ReactNode; title: string; description: string }> = ({ icon, title, description }) => (
     <div className="text-center py-24 w-full flex flex-col items-center justify-center">

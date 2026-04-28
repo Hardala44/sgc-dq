@@ -19,8 +19,8 @@ const CategoryIcon: React.FC<CategoryIconProps> = ({
   color = '#002BFF',
   strokeWidth = 1.5,
 }) => {
-  const Icon = getPlaceholderIcon(categoryName);
-  return <Icon size={size} color={color} strokeWidth={strokeWidth} />;
+  const iconComponent = getPlaceholderIcon(categoryName);
+  return React.createElement(iconComponent, { size, color, strokeWidth });
 };
 
 export default CategoryIcon;

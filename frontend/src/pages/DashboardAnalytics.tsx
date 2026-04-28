@@ -95,9 +95,10 @@ const DashboardAnalytics = () => {
                     }
                 });
                 setData(response.data);
-            } catch (err: any) {
+            } catch (err) {
+                const axiosError = err as { response?: { status?: number } };
                 console.error("Error fetching dashboard data", err);
-                if (err.response && err.response.status === 401) {
+                if (axiosError.response && axiosError.response.status === 401) {
                     setError("Sesión expirada. Por favor, cierre sesión e ingrese nuevamente.");
                 } else {
                     setError("Error al cargar los datos. Por favor revise su conexión.");
@@ -116,11 +117,13 @@ const DashboardAnalytics = () => {
         return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value);
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const CustomTooltip = ({ active, payload, label }: any) => {
         if (active && payload && payload.length) {
             return (
                 <div className="bg-white p-4 border border-slate-200 shadow-sm rounded-lg">
                     <p className="font-bold text-slate-900 mb-2">{label}</p>
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     {payload.map((entry: any, index: number) => (
                         <div key={index} className="flex items-center gap-2 mb-1">
                             <div

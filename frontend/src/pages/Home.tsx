@@ -28,7 +28,7 @@ const Home = () => {
     const navigate = useNavigate();
     const [offers, setOffers] = useState<Product[]>([]);
     const [loadingOffers, setLoadingOffers] = useState(true);
-    const [dashboardData, setDashboardData] = useState<any>(null);
+    const [dashboardData, setDashboardData] = useState<Record<string, unknown> | null>(null);
     const [loadingDashboard, setLoadingDashboard] = useState(true);
     const [isDeepDiveOpen, setIsDeepDiveOpen] = useState(false);
 
@@ -36,7 +36,7 @@ const Home = () => {
         const fetchOffers = async () => {
             try {
                 const response = await api.get('/productos/');
-                const productsWithSavings = response.data.slice(0, 3).map((p: any) => ({
+                const productsWithSavings = response.data.slice(0, 3).map((p: { ahorro?: number; [key: string]: unknown }) => ({
                     ...p,
                     ahorro: p.ahorro || Math.floor(Math.random() * 20) + 10
                 }));
@@ -154,7 +154,7 @@ const Home = () => {
                                 Diagnóstico de Inversión
                             </h3>
                             <p className="text-slate-600 text-sm leading-relaxed">
-                                Análisis de <span className="text-black font-bold text-base">{dashboardData.diagnostic_breakdown.filter((d: any) => d.status !== 'in_range').length}</span> categorías operando fuera de rango óptimo. Riesgos de sub-inversión vs fugas de capital.
+                                Análisis de <span className="text-black font-bold text-base">{((dashboardData.diagnostic_breakdown as Array<{status: string}>) || []).filter((d) => d.status !== 'in_range').length}</span> categorías operando fuera de rango óptimo. Riesgos de sub-inversión vs fugas de capital.
                             </p>
                             <div className="mt-5 flex items-center gap-2">
                                 <span className="text-xs font-bold text-klein-600 uppercase tracking-widest group-hover:text-klein-700 transition-colors">Profundizar Análisis</span>

@@ -16,8 +16,8 @@ const Layout = () => {
                 <Header />
 
                 {/* Scrollable Page Canvas */}
-                <main className="flex-1 overflow-x-hidden overflow-y-auto w-full pb-16">
-                    <div className="max-w-[1400px] w-full mx-auto px-6 md:px-10 lg:px-16 spacing-y-12">
+                <main className="flex-1 overflow-x-hidden overflow-y-auto w-full bg-[#F7F7F7] pb-16">
+                    <div className="w-full px-6 md:px-8 lg:px-10">
                         <Outlet />
                     </div>
                 </main>
