@@ -217,11 +217,12 @@ export const MarketplaceSearch = () => {
                </div>
 
                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                 {filteredResults.map(producto => (
+                 {filteredResults.map((producto, index) => (
                    <MarketplaceProductCard
                      key={producto.id}
                      producto={producto}
                      onClick={setSelectedProduct}
+                     productIndex={index}
                    />
                  ))}
                </div>

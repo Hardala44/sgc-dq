@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import ProviderCard from '../components/ProviderCard';
 import GlobalSearch from '../components/GlobalSearch';
@@ -34,8 +34,15 @@ interface Proveedor {
 type ViewMode = 'catalog' | 'search';
 type ResultTab = 'productos' | 'proveedores';
 
+interface CatalogNavigationState {
+    openProductId?: number;
+}
+
 const Catalogo = () => {
     const [searchParams] = useSearchParams();
+    const location = useLocation();
+    const navigate = useNavigate();
+    const navigationState = (location.state as CatalogNavigationState | null) ?? null;
 
     // ── Data ──────────────────────────────────────────────────────────────────
     const [categories, setCategories] = useState<Categoria[]>([]);
@@ -78,6 +85,26 @@ const Catalogo = () => {
         init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    useEffect(() => {
+        const openProductId = navigationState?.openProductId;
+        if (typeof openProductId !== 'number') {
+            return;
+        }
+
+        const availableProducts = viewMode === 'search' ? searchProductos : categoryProductos;
+        const matchedProduct = availableProducts.find((producto) => producto.id === openProductId);
+
+        if (matchedProduct) {
+            setSelectedProducto(matchedProduct);
+            navigate(location.pathname + location.search, { replace: true, state: null });
+            return;
+        }
+
+        if (!loadingContent) {
+            navigate(location.pathname + location.search, { replace: true, state: null });
+        }
+    }, [categoryProductos, loadingContent, location.pathname, location.search, navigate, navigationState, searchProductos, viewMode]);
 
     const fetchCategories = async () => {
         try {
@@ -383,11 +410,12 @@ const Catalogo = () => {
                                         /* Marketplace products grid */
                                         categoryProductos.length > 0 ? (
                                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                                {categoryProductos.map(producto => (
+                                                {categoryProductos.map((producto, index) => (
                                                     <MarketplaceProductCard
                                                         key={producto.id}
                                                         producto={producto}
                                                         onClick={setSelectedProducto}
+                                                        productIndex={index}
                                                     />
                                                 ))}
                                             </div>
@@ -425,11 +453,12 @@ const Catalogo = () => {
                                     {globalTab === 'productos' ? (
                                         filteredSearchProductos.length > 0 ? (
                                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                                {filteredSearchProductos.map(producto => (
+                                                {filteredSearchProductos.map((producto, index) => (
                                                     <MarketplaceProductCard
                                                         key={producto.id}
                                                         producto={producto}
                                                         onClick={setSelectedProducto}
+                                                        productIndex={index}
                                                     />
                                                 ))}
                                             </div>

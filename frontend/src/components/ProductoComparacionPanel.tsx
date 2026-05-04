@@ -8,45 +8,6 @@ import type { ProductSearchResult, SupplierOffer } from '../types/marketplace';
 import { STOCK_LABELS, isPlaceholderUrl } from '../utils/marketplace';
 import CategoryIcon from './CategoryIcon';
 
-/**
- * Resolves the best URL for the "Ir al Suministro" button.
- *
- * Strategy:
- *  1. If `url_compra` resolves to a page with a non-trivial path (i.e. it's
- *     an actual product page, not just the homepage), use it as-is.
- *  2. Otherwise build a search URL from the provider's base URL:
- *       <origin>/search?q=<linea_producto>
- *  3. If neither is available, return null (button will be disabled).
- */
-function resolveSupplyUrl(
-  oferta: SupplierOffer,
-  linea_producto: string,
-): string | null {
-  const tryParse = (raw: string): URL | null => {
-    try { return new URL(raw); } catch { return null; }
-  };
-
-  // 1. Valid product URL: non-empty url_compra with a meaningful path
-  if (oferta.url_compra) {
-    const parsed = tryParse(oferta.url_compra);
-    if (parsed && parsed.pathname.replace(/\//g, '').length > 0) {
-      return oferta.url_compra;
-    }
-  }
-
-  // 2. Fallback: search URL built from the provider's base web URL
-  const baseRaw = oferta.proveedor.url_web;
-  if (baseRaw) {
-    const base = tryParse(baseRaw.startsWith('http') ? baseRaw : `https://${baseRaw}`);
-    if (base) {
-      const searchTerm = linea_producto || oferta.proveedor.nombre;
-      return `${base.origin}/search?q=${encodeURIComponent(searchTerm)}`;
-    }
-  }
-
-  return null;
-}
-
 interface ProductoComparacionPanelProps {
   producto: ProductSearchResult | null;
   onClose: () => void;
@@ -84,7 +45,6 @@ const ProductoComparacionPanel: React.FC<ProductoComparacionPanelProps> = ({ pro
 
   const isPlaceholder = isPlaceholderUrl(producto.imagen_url);
   const suministros = producto.suministros || [];
-  const lineaProducto = producto.linea_producto || producto.nombre;
 
   return (
     <>
@@ -188,10 +148,16 @@ const ProductoComparacionPanel: React.FC<ProductoComparacionPanelProps> = ({ pro
               {suministros.map((oficial) => {
                 const stockInfo = STOCK_LABELS[oficial.stock_status] ?? STOCK_LABELS.unknown;
                 const prov = oficial.proveedor;
-                const supplyUrl = resolveSupplyUrl(oficial, lineaProducto);
                 const telHref = prov.contacto_telefono ? `tel:${prov.contacto_telefono}` : null;
                 const mailHref = prov.contacto_email
-                  ? `mailto:${prov.contacto_email}?subject=${encodeURIComponent(`Interés en producto: ${producto.nombre}`)}`
+                  ? `mailto:${prov.contacto_email}?subject=${encodeURIComponent(`Consulta desde DentalQuality: ${producto.nombre}`)}`
+                  : null;
+                const rawProviderWeb = (prov as { sitio_web?: string; website?: string; url?: string; url_web?: string }).sitio_web
+                  || (prov as { sitio_web?: string; website?: string; url?: string; url_web?: string }).website
+                  || (prov as { sitio_web?: string; website?: string; url?: string; url_web?: string }).url
+                  || prov.url_web;
+                const providerWebUrl = rawProviderWeb
+                  ? (rawProviderWeb.startsWith('http') ? rawProviderWeb : `https://${rawProviderWeb}`)
                   : null;
 
                 return (
@@ -249,7 +215,7 @@ const ProductoComparacionPanel: React.FC<ProductoComparacionPanelProps> = ({ pro
                           className={`inline-flex items-center justify-center gap-2 px-4 py-2 text-[11px] font-bold uppercase tracking-widest rounded-lg border transition-all ${
                             telHref
                             ? 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50 shadow-sm'
-                            : 'bg-slate-50 border-slate-100 text-slate-400 cursor-not-allowed'
+                            : 'bg-slate-50 border-slate-100 text-slate-400 cursor-not-allowed opacity-50'
                           }`}
                           onClick={(e) => !telHref && e.preventDefault()}
                           {...(telHref ? {} : { 'aria-disabled': true })}
@@ -263,7 +229,7 @@ const ProductoComparacionPanel: React.FC<ProductoComparacionPanelProps> = ({ pro
                           className={`inline-flex items-center justify-center gap-2 px-4 py-2 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-all shadow-sm ${
                             mailHref
                             ? 'bg-klein-600 text-white hover:bg-klein-700 shadow-klein-600/20'
-                            : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                            : 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-50'
                           }`}
                           onClick={(e) => !mailHref && e.preventDefault()}
                           {...(mailHref ? {} : { 'aria-disabled': true })}
@@ -273,17 +239,17 @@ const ProductoComparacionPanel: React.FC<ProductoComparacionPanelProps> = ({ pro
 
                        {/* E-Commerce / search fallback */}
                        <a
-                           href={supplyUrl ?? '#'}
-                           target={supplyUrl ? '_blank' : undefined}
-                           rel="noopener noreferrer"
-                           title={supplyUrl ? 'Ver suministro en origen' : 'Sin enlace disponible'}
+                           href={providerWebUrl ?? '#'}
+                           target={providerWebUrl ? '_blank' : undefined}
+                           rel={providerWebUrl ? 'noopener noreferrer' : undefined}
+                           title={providerWebUrl ? 'Abrir web del proveedor' : 'Sin web disponible'}
                            className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ml-1 border ${
-                               supplyUrl
+                             providerWebUrl
                                ? 'text-slate-400 hover:text-slate-700 hover:bg-slate-50 border-transparent hover:border-slate-200'
-                               : 'text-slate-300 bg-slate-50 border-slate-100 cursor-not-allowed'
+                             : 'text-slate-300 bg-slate-50 border-slate-100 cursor-not-allowed opacity-50'
                            }`}
-                           onClick={(e) => !supplyUrl && e.preventDefault()}
-                           {...(supplyUrl ? {} : { 'aria-disabled': true })}
+                           onClick={(e) => !providerWebUrl && e.preventDefault()}
+                           {...(providerWebUrl ? {} : { 'aria-disabled': true })}
                        >
                           <ExternalLink size={16} />
                        </a>

@@ -4,6 +4,7 @@ import {
     Search,
     LayoutDashboard,
     Users,
+    Trophy,
     Settings,
     LogOut
 } from 'lucide-react';
@@ -22,6 +23,7 @@ const Sidebar = () => {
         { icon: Search, label: 'Catálogo', path: '/catalogo' },
         { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
         { icon: Users, label: 'Proveedores', path: '/proveedores' },
+        { icon: Trophy, label: 'Mis Puntos', path: '/puntos' },
         { icon: Settings, label: 'Configuración', path: '/settings' },
     ];
 

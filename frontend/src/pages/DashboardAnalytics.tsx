@@ -1,36 +1,41 @@
-import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { useState, useEffect, useMemo } from 'react';
 import {
     BarChart,
     Bar,
     XAxis,
     YAxis,
     CartesianGrid,
-    Tooltip,
+    Tooltip as RechartsTooltip,
     Legend,
-    ResponsiveContainer
+    ResponsiveContainer,
+    PieChart,
+    Pie,
+    Cell,
 } from 'recharts';
 import { useAuth } from '../context/AuthContext';
-import { TrendingUp, TrendingDown, DollarSign, Box } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Box, AlertTriangle, CheckCircle } from 'lucide-react';
+import api from '../services/api';
 
 interface KPI {
     total_spend: number;
     total_savings: number;
     spend_per_box: number | null;
+    ahorro_potencial?: number;
+    ahorro_potencial_por_box?: number | null;
 }
 
 interface CategoryData {
     id: number;
-    name: string;
-    current_spend: number;
-    previous_spend: number;
-    sector_avg: number;
+    nombre_categoria: string;
+    gasto_actual: number;
+    gasto_anterior: number;
+    media_sector: number;
     trend_pct: number;
 }
 
 interface AhorroPorProveedor {
-    proveedor_nombre: string;
-    compras: number;
+    nombre_proveedor: string;
+    valor: number;
     diferencial: number;
     ahorro: number;
 }
@@ -39,13 +44,37 @@ interface DashboardData {
     period_label: string;
     comparison_label: string;
     kpis: KPI;
-    categories: CategoryData[];
-    ahorro_por_proveedor?: AhorroPorProveedor[];
+    categories: Array<{
+        id: number;
+        name?: string;
+        nombre_categoria?: string;
+        current_spend?: number;
+        gasto_actual?: number;
+        previous_spend?: number;
+        gasto_anterior?: number;
+        sector_avg?: number;
+        media_sector?: number;
+        trend_pct: number;
+    }>;
+    ahorro_por_proveedor?: Array<{
+        proveedor_nombre?: string;
+        nombre_proveedor?: string;
+        compras?: number;
+        valor?: number;
+        diferencial: number;
+        ahorro: number;
+    }>;
 }
 
 interface Clinic {
     id: string;
     nombre: string;
+}
+
+interface SmartInsightItem {
+    id: string;
+    tone: 'positive' | 'warning';
+    message: string;
 }
 
 const DashboardAnalytics = () => {
@@ -54,17 +83,85 @@ const DashboardAnalytics = () => {
     const [comparisonMode, setComparisonMode] = useState<'yoy' | 'qoq'>('yoy');
     const [clinics, setClinics] = useState<Clinic[]>([]);
     const [selectedClinicId, setSelectedClinicId] = useState<string>('');
-    const [data, setData] = useState<DashboardData | null>(null);
+    const [datosKpis, setDatosKpis] = useState<KPI | null>(null);
+    const [datosCategorias, setDatosCategorias] = useState<CategoryData[]>([]);
+    const [datosProveedores, setDatosProveedores] = useState<AhorroPorProveedor[]>([]);
+    const [periodLabel, setPeriodLabel] = useState('');
+    const [comparisonLabel, setComparisonLabel] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const providerChartColors = ['#0f172a', '#2563eb', '#0f766e', '#ea580c', '#7c3aed', '#db2777'];
+
+    const smartInsights = useMemo(() => {
+        const categoriesWithDiff = datosCategorias.map((category) => {
+            const absoluteChange = category.gasto_actual - category.gasto_anterior;
+            const percentChange = category.gasto_anterior > 0
+                ? (absoluteChange / category.gasto_anterior) * 100
+                : (category.gasto_actual > 0 ? 100 : 0);
+
+            return {
+                ...category,
+                absoluteChange,
+                percentChange,
+            };
+        });
+
+        const bestOptimization = categoriesWithDiff.length > 0
+            ? [...categoriesWithDiff].sort((left, right) => left.absoluteChange - right.absoluteChange)[0]
+            : null;
+
+        const biggestAlert = categoriesWithDiff.length > 0
+            ? [...categoriesWithDiff].sort((left, right) => right.percentChange - left.percentChange)[0]
+            : null;
+
+        const topProviders = [...datosProveedores]
+            .sort((left, right) => right.valor - left.valor)
+            .slice(0, 3);
+
+        const providerNames = topProviders.map((provider) => provider.nombre_proveedor);
+        const simulatedOpportunity = topProviders.reduce((total, provider) => total + provider.valor, 0) * 0.12;
+        const optimizationValue = datosKpis?.ahorro_potencial && datosKpis.ahorro_potencial > 0
+            ? datosKpis.ahorro_potencial
+            : simulatedOpportunity;
+
+        const insights: SmartInsightItem[] = [
+            {
+                id: 'positive',
+                tone: 'positive',
+                message: bestOptimization
+                    ? `Excelente gestión en ${bestOptimization.nombre_categoria}, has reducido el gasto respecto al periodo anterior.`
+                    : 'Excelente disciplina financiera: mantenéis una evolución de gasto estable respecto al periodo anterior.',
+            },
+            {
+                id: 'warning',
+                tone: 'warning',
+                message: biggestAlert
+                    ? `Atención: Tu gasto en ${biggestAlert.nombre_categoria} ha subido considerablemente. Te recomendamos revisar tarifas con tus proveedores.`
+                    : 'Atención: no detectamos una categoría claramente tensionada, pero conviene revisar periódicamente las tarifas pactadas con proveedores.',
+            },
+        ];
+
+        let opportunityText = 'Detectamos oportunidades de consolidación de compra dentro de tu red actual.';
+
+        if (datosKpis?.ahorro_potencial && datosKpis.ahorro_potencial > 0) {
+            opportunityText = 'Detectado en compras fuera de la red DQ y oportunidades activas de optimización ya estimadas por el sistema.';
+        } else if (providerNames.length > 0) {
+            opportunityText = `Detectamos que centralizando el 100% de tus compras del top 3 de proveedores (${providerNames.join(', ')}), tu ahorro proyectado crecería significativamente.`;
+        }
+
+        return {
+            insights,
+            optimizationValue,
+            opportunityText,
+        };
+    }, [datosCategorias, datosKpis, datosProveedores]);
 
     // Fetch Clinics on Mount
     useEffect(() => {
         const fetchClinics = async () => {
             try {
-                const response = await axios.get('http://127.0.0.1:8000/api/analytics/clinics/', {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const response = await api.get('/analytics/clinics/');
                 setClinics(response.data);
                 if (response.data.length > 0) {
                     setSelectedClinicId(response.data[0].id);
@@ -84,17 +181,37 @@ const DashboardAnalytics = () => {
             setLoading(true);
             setError(null);
             try {
-                const response = await axios.get('http://127.0.0.1:8000/api/analytics/dashboard/', {
+                const response = await api.get<DashboardData>('/analytics/dashboard/', {
                     params: {
                         period: period,
                         comparison_mode: comparisonMode,
                         clinic_id: selectedClinicId
-                    },
-                    headers: {
-                        Authorization: `Bearer ${token}`
                     }
                 });
-                setData(response.data);
+
+                console.log('Analytics dashboard response', response.data);
+
+                const mappedCategories: CategoryData[] = (response.data.categories || []).map((category) => ({
+                    id: category.id,
+                    nombre_categoria: category.nombre_categoria || category.name || 'Sin categoría',
+                    gasto_actual: Number(category.gasto_actual ?? category.current_spend ?? 0),
+                    gasto_anterior: Number(category.gasto_anterior ?? category.previous_spend ?? 0),
+                    media_sector: Number(category.media_sector ?? category.sector_avg ?? 0),
+                    trend_pct: Number(category.trend_pct ?? 0),
+                }));
+
+                const mappedProviders: AhorroPorProveedor[] = (response.data.ahorro_por_proveedor || []).map((provider) => ({
+                    nombre_proveedor: provider.nombre_proveedor || provider.proveedor_nombre || 'Sin proveedor',
+                    valor: Number(provider.valor ?? provider.compras ?? 0),
+                    diferencial: Number(provider.diferencial ?? 0),
+                    ahorro: Number(provider.ahorro ?? 0),
+                }));
+
+                setDatosKpis(response.data.kpis);
+                setDatosCategorias(mappedCategories);
+                setDatosProveedores(mappedProviders);
+                setPeriodLabel(response.data.period_label);
+                setComparisonLabel(response.data.comparison_label);
             } catch (err) {
                 const axiosError = err as { response?: { status?: number } };
                 console.error("Error fetching dashboard data", err);
@@ -135,9 +252,9 @@ const DashboardAnalytics = () => {
                             </span>
                         </div>
                     ))}
-                    {data && (
+                    {payload[0]?.payload?.media_sector > 0 && (
                         <div className="mt-2 pt-2 border-t border-slate-100">
-                            <p className="text-xs text-slate-400">Promedio Sector: {formatCurrency(payload[0].payload.sector_avg)}</p>
+                            <p className="text-xs text-slate-400">Media Sector: {formatCurrency(payload[0].payload.media_sector)}</p>
                         </div>
                     )}
                 </div>
@@ -146,7 +263,24 @@ const DashboardAnalytics = () => {
         return null;
     };
 
-    if (loading && !data) return (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ProviderTooltip = ({ active, payload }: any) => {
+        if (!active || !payload || !payload.length) {
+            return null;
+        }
+
+        const provider = payload[0].payload as AhorroPorProveedor;
+
+        return (
+            <div className="bg-white p-4 border border-slate-200 shadow-sm rounded-lg">
+                <p className="font-bold text-slate-900 mb-2">{provider.nombre_proveedor}</p>
+                <p className="text-sm text-slate-500">Gasto: <span className="font-semibold text-slate-900">{formatCurrency(provider.valor)}</span></p>
+                <p className="text-sm text-slate-500">Ahorro: <span className="font-semibold text-emerald-600">{formatCurrency(provider.ahorro)}</span></p>
+            </div>
+        );
+    };
+
+    if (loading && !datosKpis) return (
         <div className="flex h-screen items-center justify-center bg-slate-50">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
         </div>
@@ -195,7 +329,7 @@ const DashboardAnalytics = () => {
                             <option value="2024-Q2">Q2 2024</option>
                             <option value="2024-Q1">Q1 2024</option>
                         </select>
-                        <span className="text-slate-400 text-xs">vs {data?.comparison_label}</span>
+                        <span className="text-slate-400 text-xs">vs {comparisonLabel || '...'}</span>
                     </div>
                 </div>
 
@@ -225,9 +359,9 @@ const DashboardAnalytics = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-start justify-between">
                     <div>
-                        <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Gasto Total ({data?.period_label})</p>
+                        <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Gasto Total ({periodLabel || '...'})</p>
                         <h3 className="text-2xl font-bold text-slate-900 tracking-tight mt-1">
-                            {data ? formatCurrency(data.kpis.total_spend) : '...'}
+                            {datosKpis ? formatCurrency(datosKpis.total_spend) : '...'}
                         </h3>
                     </div>
                     <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
@@ -238,14 +372,14 @@ const DashboardAnalytics = () => {
                 <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-start justify-between">
                     <div>
                         <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Ahorro vs Periodo Anterior</p>
-                        <h3 className={`text-2xl font-bold tracking-tight mt-1 ${data && data.kpis.total_savings >= 0 ? 'text-emerald-600' : 'text-rose-600'
+                        <h3 className={`text-2xl font-bold tracking-tight mt-1 ${datosKpis && datosKpis.total_savings >= 0 ? 'text-emerald-600' : 'text-rose-600'
                             }`}>
-                            {data ? formatCurrency(data.kpis.total_savings) : '...'}
+                            {datosKpis ? formatCurrency(datosKpis.total_savings) : '...'}
                         </h3>
                     </div>
-                    <div className={`p-2.5 rounded-lg border ${data && data.kpis.total_savings >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-100'
+                    <div className={`p-2.5 rounded-lg border ${datosKpis && datosKpis.total_savings >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-100'
                         }`}>
-                        {data && data.kpis.total_savings >= 0 ? (
+                        {datosKpis && datosKpis.total_savings >= 0 ? (
                             <TrendingUp className="w-5 h-5 text-emerald-600" />
                         ) : (
                             <TrendingDown className="w-5 h-5 text-rose-600" />
@@ -257,7 +391,7 @@ const DashboardAnalytics = () => {
                     <div>
                         <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Gasto por Box</p>
                         <h3 className="text-2xl font-bold text-slate-900 tracking-tight mt-1">
-                            {data && data.kpis.spend_per_box !== null ? formatCurrency(data.kpis.spend_per_box) : 'N/A'}
+                            {datosKpis && datosKpis.spend_per_box !== null ? formatCurrency(datosKpis.spend_per_box) : 'N/A'}
                         </h3>
                     </div>
                     <div className="p-2.5 bg-indigo-50 rounded-lg border border-indigo-100">
@@ -266,88 +400,166 @@ const DashboardAnalytics = () => {
                 </div>
             </div>
 
-            {/* Main Chart */}
-            <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                <h3 className="text-lg font-bold text-slate-900 tracking-tight mb-5">Desglose por Categoría</h3>
-                {/* Fixed height container for Recharts */}
-                <div style={{ width: '100%', height: 350 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                            data={data?.categories || []}
-                            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                        >
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                            <XAxis
-                                dataKey="name"
-                                axisLine={false}
-                                tickLine={false}
-                                tick={{ fill: '#64748B', fontSize: 12 }}
-                                dy={10}
-                            />
-                            <YAxis
-                                axisLine={false}
-                                tickLine={false}
-                                tick={{ fill: '#64748B', fontSize: 12 }}
-                                tickFormatter={(value) => `${value / 1000}k`}
-                            />
-                            <Tooltip content={<CustomTooltip />} cursor={{ fill: '#F8FAFC' }} />
-                            <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
-                            <Bar
-                                dataKey="previous_spend"
-                                name="Periodo Anterior"
-                                fill="#e2e8f0"
-                                radius={[4, 4, 0, 0]}
-                                barSize={30}
-                            />
-                            <Bar
-                                dataKey="current_spend"
-                                name="Periodo Actual"
-                                fill="#0f172a"
-                                radius={[4, 4, 0, 0]}
-                                barSize={30}
-                            />
-                        </BarChart>
-                    </ResponsiveContainer>
+            {/* Smart Insights */}
+            <div className="w-full bg-slate-50 border border-blue-100 rounded-xl p-6 mb-6">
+                <div className="flex flex-col md:flex-row gap-6">
+                    <div className="w-full md:w-2/3">
+                        <h3 className="text-lg font-bold text-slate-900 tracking-tight mb-4">Diagnóstico Inteligente</h3>
+                        <div className="space-y-4">
+                            {smartInsights.insights.map((insight) => (
+                                <div key={insight.id} className="flex items-start gap-3">
+                                    <div className={`p-2 rounded-md border ${insight.tone === 'positive'
+                                        ? 'bg-emerald-50 border-emerald-100'
+                                        : 'bg-amber-50 border-amber-100'
+                                        }`}>
+                                        {insight.tone === 'positive' ? (
+                                            <CheckCircle className="w-4 h-4 text-emerald-600" />
+                                        ) : (
+                                            <AlertTriangle className="w-4 h-4 text-amber-600" />
+                                        )}
+                                    </div>
+                                    <p className="text-sm text-slate-700 leading-relaxed">{insight.message}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="w-full md:w-1/3">
+                        <h3 className="text-lg font-bold text-slate-900 tracking-tight mb-4">Oportunidad de Optimización</h3>
+                        <div className="bg-white rounded-lg p-4 shadow-sm border border-rose-100">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Ahorro Potencial no aprovechado</p>
+                            <p className="text-3xl font-bold text-rose-600 tracking-tight mt-2">{formatCurrency(smartInsights.optimizationValue)}</p>
+                            <p className="text-xs text-slate-500 mt-2">{smartInsights.opportunityText}</p>
+                            <button
+                                type="button"
+                                className="mt-4 inline-flex items-center justify-center px-3 py-1.5 rounded-md bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors"
+                            >
+                                Ver alternativas DQ
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Charts */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <div className="xl:col-span-2 bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                    <h3 className="text-lg font-bold text-slate-900 tracking-tight mb-5">Desglose por Categoría</h3>
+                    <div style={{ width: '100%', height: 350 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                                data={datosCategorias}
+                                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                            >
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                                <XAxis
+                                    dataKey="nombre_categoria"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: '#64748B', fontSize: 12 }}
+                                    dy={10}
+                                />
+                                <YAxis
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: '#64748B', fontSize: 12 }}
+                                    tickFormatter={(value) => `${value / 1000}k`}
+                                />
+                                <RechartsTooltip content={<CustomTooltip />} cursor={{ fill: '#F8FAFC' }} />
+                                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
+                                <Bar
+                                    dataKey="gasto_anterior"
+                                    name="Periodo Anterior"
+                                    fill="#cbd5e1"
+                                    radius={[4, 4, 0, 0]}
+                                    barSize={30}
+                                />
+                                <Bar
+                                    dataKey="gasto_actual"
+                                    name="Periodo Actual"
+                                    fill="#0f172a"
+                                    radius={[4, 4, 0, 0]}
+                                    barSize={30}
+                                />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                    <h3 className="text-lg font-bold text-slate-900 tracking-tight mb-5">Distribución por Proveedor</h3>
+                    <div style={{ width: '100%', height: 350 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={datosProveedores}
+                                    dataKey="valor"
+                                    nameKey="nombre_proveedor"
+                                    innerRadius={70}
+                                    outerRadius={110}
+                                    paddingAngle={3}
+                                >
+                                    {datosProveedores.map((provider, index) => (
+                                        <Cell
+                                            key={provider.nombre_proveedor}
+                                            fill={providerChartColors[index % providerChartColors.length]}
+                                        />
+                                    ))}
+                                </Pie>
+                                <RechartsTooltip content={<ProviderTooltip />} />
+                                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
             </div>
 
             {/* Insight Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {data?.categories.map((cat) => {
-                    const isEfficient = cat.current_spend < cat.sector_avg;
-                    const diffPct = cat.sector_avg > 0 ? ((cat.current_spend - cat.sector_avg) / cat.sector_avg) * 100 : 0;
+                {datosCategorias.map((cat) => {
+                    // Normalize both values to spend-per-box so clinics of different sizes are comparable.
+                    const clinicBoxes = datosKpis?.spend_per_box && datosKpis.spend_per_box > 0
+                        ? datosKpis.total_spend / datosKpis.spend_per_box
+                        : 1;
+                    const currentSpendPerBox = clinicBoxes > 0 ? cat.gasto_actual / clinicBoxes : cat.gasto_actual;
+                    const sectorAvgPerBox = clinicBoxes > 0 ? cat.media_sector / clinicBoxes : cat.media_sector;
+
+                    const diffPct = sectorAvgPerBox > 0
+                        ? ((currentSpendPerBox - sectorAvgPerBox) / sectorAvgPerBox) * 100
+                        : 0;
+                    const isAboveSector = diffPct > 0;
 
                     return (
                         <div key={cat.id} className="bg-white p-4 rounded-xl border border-slate-200 hover:shadow-md transition-shadow duration-300">
                             <div className="flex justify-between items-start mb-3">
-                                <h4 className="font-semibold text-slate-900 tracking-tight">{cat.name}</h4>
-                                <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-md ${isEfficient
+                                <h4 className="font-semibold text-slate-900 tracking-tight">{cat.nombre_categoria}</h4>
+                                <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-md ${!isAboveSector
                                     ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
                                     : 'bg-amber-50 text-amber-600 border border-amber-100'
                                     }`}>
-                                    {isEfficient ? 'Eficiente' : 'Alto'}
+                                    {!isAboveSector ? 'Eficiente' : 'Alto'}
                                 </span>
                             </div>
 
                             <div className="space-y-2">
                                 <div className="flex justify-between text-xs">
-                                    <span className="text-slate-500 font-medium">Tu Gasto</span>
-                                    <span className="font-bold text-slate-900">{formatCurrency(cat.current_spend)}</span>
+                                    <span className="text-slate-500 font-medium">Tu Gasto (por Box)</span>
+                                    <span className="font-bold text-slate-900">{formatCurrency(currentSpendPerBox)}</span>
                                 </div>
                                 <div className="flex justify-between text-xs">
-                                    <span className="text-slate-500 font-medium">Promedio Sector</span>
-                                    <span className="font-semibold text-slate-500">{formatCurrency(cat.sector_avg)}</span>
+                                    <span className="text-slate-500 font-medium">Media Sector (por Box)</span>
+                                    <span className="font-semibold text-slate-500">{formatCurrency(sectorAvgPerBox)}</span>
                                 </div>
 
                                 <div className="pt-3 border-t border-slate-100 mt-2 flex items-center gap-2">
-                                    {isEfficient ? (
+                                    {!isAboveSector ? (
                                         <TrendingDown className="w-4 h-4 text-emerald-500" />
                                     ) : (
                                         <TrendingUp className="w-4 h-4 text-amber-500" />
                                     )}
-                                    <span className={`text-[10px] font-bold uppercase tracking-widest ${isEfficient ? 'text-emerald-600' : 'text-amber-600'
+                                    <span className={`text-[10px] font-bold uppercase tracking-widest ${!isAboveSector ? 'text-emerald-600' : 'text-amber-600'
                                         }`}>
-                                        {Math.abs(diffPct).toFixed(1)}% {isEfficient ? 'Menos' : 'Más'}
+                                        {`${diffPct >= 0 ? '+' : ''}${diffPct.toFixed(1)}% VS MEDIA`}
                                     </span>
                                 </div>
                             </div>
@@ -355,41 +567,6 @@ const DashboardAnalytics = () => {
                     );
                 })}
             </div>
-
-            {/* Provider Breakdown Table */}
-            {data?.ahorro_por_proveedor && data.ahorro_por_proveedor.length > 0 && (
-                <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <h3 className="text-lg font-bold text-slate-900 tracking-tight mb-4">Desglose por Proveedor</h3>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse min-w-[600px]">
-                            <thead>
-                                <tr className="border-b border-slate-200">
-                                    <th className="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 rounded-tl-lg">Proveedor</th>
-                                    <th className="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 text-right">Compras</th>
-                                    <th className="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 text-center">Diferencial</th>
-                                    <th className="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 text-right rounded-tr-lg">Ahorro</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {data.ahorro_por_proveedor.map((prov, idx) => (
-                                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors duration-150">
-                                        <td className="py-3 px-4 text-sm font-semibold text-slate-900">{prov.proveedor_nombre}</td>
-                                        <td className="py-3 px-4 text-sm font-medium text-slate-700 text-right">{formatCurrency(prov.compras)}</td>
-                                        <td className="py-3 px-4 text-center">
-                                            <span className="inline-flex px-2 py-1 bg-slate-100 text-slate-600 text-xs font-semibold rounded-md border border-slate-200">
-                                                {Number(prov.diferencial) % 1 === 0 ? prov.diferencial : Number(prov.diferencial).toFixed(2)}%
-                                            </span>
-                                        </td>
-                                        <td className="py-3 px-4 text-sm font-bold text-emerald-600 text-right">
-                                            {formatCurrency(prov.ahorro)}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

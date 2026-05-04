@@ -1,19 +1,17 @@
 import React from 'react';
 import { Tag, ChevronRight } from 'lucide-react';
 import type { ProductSearchResult, SupplierOffer } from '../types/marketplace';
-import { isPlaceholderUrl } from '../utils/marketplace';
-import CategoryIcon from './CategoryIcon';
+import { getPremiumImage } from '../utils/imageMapping';
 
 export type { ProductSearchResult as ProductoMarketplace, SupplierOffer as ProveedorOferta }; // For backwards compatibility
 
 interface MarketplaceProductCardProps {
   producto: ProductSearchResult;
   onClick: (producto: ProductSearchResult) => void;
+  productIndex?: number;
 }
 
-const MarketplaceProductCard: React.FC<MarketplaceProductCardProps> = ({ producto, onClick }) => {
-  const isPlaceholder = isPlaceholderUrl(producto.imagen_url);
-
+const MarketplaceProductCard: React.FC<MarketplaceProductCardProps> = ({ producto, onClick, productIndex = 0 }) => {
   // Safe default fallback for suministros if undefined
   const proveedoresList = producto.suministros || [];
   const MAX_LOGOS = 4;
@@ -30,27 +28,17 @@ const MarketplaceProductCard: React.FC<MarketplaceProductCardProps> = ({ product
       aria-label={`Consultar suministro para ${producto.nombre}`}
     >
       {/* ── Image Area ── */}
-      <div className="relative h-44 bg-slate-50 overflow-hidden flex-shrink-0">
-        {isPlaceholder ? (
-          /* Icon fills the whole area; sits below the logo stack (z-0) */
-          <div className="absolute inset-0 z-0 flex h-full w-full items-center justify-center bg-slate-50">
-            <CategoryIcon categoryName={producto.categoria_nombre} size={48} />
-          </div>
-        ) : (
-          <>
-            <img
-              src={producto.imagen_url!}
-              alt={producto.nombre}
-              loading="lazy"
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
-            {/* Dark scrim only on real photos so supplier logos stay legible */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-80" />
-          </>
-        )}
+      <div className="relative h-48 bg-slate-50 overflow-hidden flex-shrink-0">
+        <>
+          <img
+            src={getPremiumImage(producto.nombre, productIndex)}
+            alt={producto.nombre}
+            loading="lazy"
+            className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-700"
+          />
+          {/* Dark scrim for better supplier logo legibility */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-80" />
+        </>
 
         {/* Brand / Identifier Tag */}
         {producto.marca && (
@@ -96,9 +84,7 @@ const MarketplaceProductCard: React.FC<MarketplaceProductCardProps> = ({ product
               )}
             </div>
             {/* Distribuidor count */}
-            <span className={`text-[9px] font-bold uppercase tracking-widest drop-shadow-sm ${
-              isPlaceholder ? 'text-slate-500' : 'text-white/90 drop-shadow-md'
-            }`}>
+            <span className="text-[9px] font-bold uppercase tracking-widest drop-shadow-sm text-white/90 drop-shadow-md">
               {proveedoresList.length === 1 ? '1 distribuidor' : `${proveedoresList.length} distribuidores`}
             </span>
         </div>
