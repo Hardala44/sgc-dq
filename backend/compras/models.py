@@ -93,6 +93,7 @@ class Producto(models.Model):
     linea_producto = models.CharField(max_length=300, blank=True, help_text='Conceptual product line for grouping and procurement highlights')
     categoria = models.ForeignKey(Categoria, on_delete=models.PROTECT, related_name='productos_marketplace')
     descripcion = models.TextField(blank=True)
+    imagen = models.ImageField(upload_to='productos/', blank=True, null=True)
     imagen_url = models.URLField(blank=True, help_text='URL of a generic reference image')
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     activo = models.BooleanField(default=True)
@@ -140,7 +141,7 @@ class ProveedorOferta(models.Model):
         return f'{self.proveedor.nombre} › {self.producto.nombre} @ {self.precio}€'
 
 class Oferta(models.Model):
-    producto = models.ForeignKey(ProductoLegado, on_delete=models.CASCADE)
+    producto = models.ForeignKey(Producto, on_delete=models.CASCADE)
     titulo = models.CharField(max_length=200)
     descripcion = models.TextField(blank=True)
     descuento_porcentaje = models.DecimalField(max_digits=5, decimal_places=2)

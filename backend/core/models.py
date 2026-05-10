@@ -61,6 +61,7 @@ class ImportBatch(models.Model):
 class ExpenseCategory(models.Model):
     nombre = models.CharField(max_length=200)
     nombre_norm = models.CharField(max_length=200, unique=True)
+    min_quarterly_consumption = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
 
     class Meta:
         verbose_name_plural = "Expense Categories"
@@ -75,6 +76,7 @@ class Gasto(models.Model): # User called this 'Expense' but codebase uses Spanis
     quarter = models.IntegerField() # 1-4
     category = models.ForeignKey(ExpenseCategory, on_delete=models.PROTECT)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
+    ahorro_aprox = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     source_sheet = models.CharField(max_length=100)
     source_row = models.IntegerField()
     last_import_batch = models.ForeignKey(ImportBatch, on_delete=models.PROTECT, null=True)
@@ -83,7 +85,7 @@ class Gasto(models.Model): # User called this 'Expense' but codebase uses Spanis
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ('clinic', 'year', 'quarter', 'category')
+        unique_together = ('clinic', 'year', 'quarter', 'category', 'proveedor')
         indexes = [
             models.Index(fields=['clinic', 'year', 'quarter']),
         ]

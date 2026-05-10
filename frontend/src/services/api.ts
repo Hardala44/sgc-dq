@@ -13,6 +13,13 @@ api.interceptors.request.use(
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
+        if (config.data instanceof FormData) {
+            delete config.headers['Content-Type'];
+        }
+        const activeClinicId = sessionStorage.getItem('dq_active_clinic');
+        if (activeClinicId) {
+            config.headers['X-Clinic-Id'] = activeClinicId;
+        }
         return config;
     },
     (error) => Promise.reject(error)

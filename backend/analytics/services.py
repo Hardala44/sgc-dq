@@ -13,10 +13,12 @@ Key capabilities:
   - Wealth Management Insights: top leakage, investment diagnostic
 """
 
+import re
 from decimal import Decimal
+from datetime import date
 from django.db.models import Sum, Avg, Min, Q
 from core.models import Gasto, ExpenseCategory, Clinica
-from compras.models import Pedido, Producto, ProveedorOferta
+from compras.models import Pedido, Producto, ProveedorOferta, Proveedor
 
 
 # ---------------------------------------------------------------------------
@@ -97,6 +99,96 @@ class AnalyticsService:
     # ── Period utilities ────────────────────────────────────────────────────
 
     @staticmethod
+    def get_available_periods(clinic):
+        """Return years and quarters that have Gasto data for a clinic, plus the latest period key."""
+        rows = (
+            Gasto.objects
+            .filter(clinic=clinic)
+            .exclude(_noise_q_gasto())
+            .values('year', 'quarter')
+            .distinct()
+            .order_by('-year', '-quarter')
+        )
+        years_map = {}
+        for row in rows:
+            yr = row['year']
+            if yr not in years_map:
+                years_map[yr] = []
+            years_map[yr].append(row['quarter'])
+
+        periods = []
+        for yr in sorted(years_map.keys(), reverse=True):
+            periods.append({'year': yr, 'quarters': sorted(years_map[yr])})
+
+        latest = None
+        first = rows.first()
+        if first:
+            latest = f"{first['year']}-Q{first['quarter']}"
+
+        return {'periods': periods, 'latest': latest}
+
+    @staticmethod
+    def _parse_period_list(period_str):
+        """Parse a period string into a sorted list of (year, quarter) tuples.
+
+        Accepted formats:
+          '2025-Q1'             → [(2025, 1)]
+          '2025-Q1,2025-Q2'    → [(2025, 1), (2025, 2)]
+          '2025'               → [(2025, 1), (2025, 2), (2025, 3), (2025, 4)]
+        """
+        period_str = period_str.strip()
+        if re.match(r'^\d{4}$', period_str):
+            year = int(period_str)
+            return [(year, q) for q in range(1, 5)]
+        parts = [p.strip() for p in period_str.split(',')]
+        result = []
+        for part in parts:
+            m = re.match(r'^(\d{4})-Q([1-4])$', part)
+            if not m:
+                raise ValueError(f"Invalid period format: '{part}'. Expected YYYY-QN.")
+            result.append((int(m.group(1)), int(m.group(2))))
+        return sorted(set(result))
+
+    @staticmethod
+    def _build_period_q(periods):
+        """Build a Q object to filter Gasto rows matching any (year, quarter) in periods."""
+        q = Q()
+        for year, quarter in periods:
+            q |= Q(year=year, quarter=quarter)
+        return q
+
+    @staticmethod
+    def _get_comparison_periods(periods, mode):
+        """Shift a list of (year, quarter) tuples for comparison (yoy or qoq)."""
+        result = []
+        for year, quarter in periods:
+            if mode == 'yoy':
+                result.append((year - 1, quarter))
+            else:  # qoq
+                if quarter == 1:
+                    result.append((year - 1, 4))
+                else:
+                    result.append((year, quarter - 1))
+        return sorted(set(result))
+
+    @staticmethod
+    def _period_label(periods):
+        """Generate a human-readable label for a list of (year, quarter) tuples."""
+        if not periods:
+            return ""
+        sorted_p = sorted(periods)
+        if len(sorted_p) == 1:
+            return f"Q{sorted_p[0][1]} {sorted_p[0][0]}"
+        years = sorted(set(y for y, q in sorted_p))
+        if len(years) == 1:
+            year = years[0]
+            quarters = sorted(set(q for y, q in sorted_p))
+            if quarters == [1, 2, 3, 4]:
+                return f"Año {year}"
+            return f"Q{quarters[0]}-Q{quarters[-1]} {year}"
+        return f"Q{sorted_p[0][1]} {sorted_p[0][0]} - Q{sorted_p[-1][1]} {sorted_p[-1][0]}"
+
+    @staticmethod
     def parse_period(period_str):
         """Parse 'YYYY-QN' → (year: int, quarter: int)."""
         try:
@@ -119,12 +211,179 @@ class AnalyticsService:
         else:
             raise ValueError("Invalid comparison mode. Expected 'yoy' or 'qoq'")
 
+    @staticmethod
+    def _resolve_latest_period(clinic):
+        """Return latest (year, quarter) with spend data for clinic, fallback to current quarter."""
+        latest = (
+            Gasto.objects
+            .filter(clinic=clinic)
+            .exclude(_noise_q_gasto())
+            .order_by('-year', '-quarter')
+            .values('year', 'quarter')
+            .first()
+        )
+        if latest:
+            return int(latest['year']), int(latest['quarter'])
+
+        today = date.today()
+        quarter = ((today.month - 1) // 3) + 1
+        return today.year, quarter
+
+    @staticmethod
+    def _calculate_dynamic_savings(gastos_qs):
+        """Compute savings totals and breakdowns using provider ahorro_estimado logic."""
+        total_savings = Decimal('0.00')
+        savings_by_provider = {}
+        savings_by_category = {}
+
+        for gasto in gastos_qs:
+            prov = gasto.proveedor
+            ahorro_linea = Decimal('0.00')
+            ahorro_estimado = Decimal('0.00')
+
+            if prov:
+                ahorro_estimado = prov.ahorro_estimado or Decimal('0.00')
+                desc_dq = prov.descuento_dq or Decimal('0.00')
+                if desc_dq > Decimal('0.00'):
+                    divisor = Decimal('1.00') - desc_dq
+                    ahorro_linea = gasto.amount * (ahorro_estimado / divisor)
+                else:
+                    ahorro_linea = gasto.amount * ahorro_estimado
+
+            if ahorro_linea == Decimal('0.00') and gasto.ahorro_aprox and gasto.ahorro_aprox > Decimal('0.00'):
+                ahorro_linea = gasto.ahorro_aprox
+
+            total_savings += ahorro_linea
+
+            cat_key = gasto.category_id
+            if cat_key not in savings_by_category:
+                savings_by_category[cat_key] = {
+                    "category_id": gasto.category_id,
+                    "category_name": gasto.category.nombre,
+                    "savings_amount": Decimal('0.00'),
+                }
+            savings_by_category[cat_key]["savings_amount"] += ahorro_linea
+
+            prov_key = prov.id if prov else 'unknown'
+            if prov_key not in savings_by_provider:
+                logo_url = None
+                if prov:
+                    logo_url = prov.logo_url or (prov.logo.url if prov.logo else None)
+                savings_by_provider[prov_key] = {
+                    "provider_id": str(prov.id) if prov else None,
+                    "provider_name": prov.nombre if prov else 'Desconocido',
+                    "logo_url": logo_url,
+                    "estimated_rate_pct": float((ahorro_estimado or Decimal('0.00')) * Decimal('100.00')),
+                    "savings_amount": Decimal('0.00'),
+                }
+            savings_by_provider[prov_key]["savings_amount"] += ahorro_linea
+
+        providers = list(savings_by_provider.values())
+        providers.sort(key=lambda x: x["savings_amount"], reverse=True)
+
+        categories = list(savings_by_category.values())
+        categories.sort(key=lambda x: x["savings_amount"], reverse=True)
+
+        for item in providers:
+            item["savings_amount"] = float(item["savings_amount"])
+        for item in categories:
+            item["savings_amount"] = float(item["savings_amount"])
+
+        return float(total_savings), categories, providers
+
+    @staticmethod
+    def get_home_highlights(clinic):
+        """
+        Returns home highlights payload:
+          - Lifetime and current-year savings totals
+          - Savings split by category and provider
+          - Compliance by category (actual spend vs min_quarterly_consumption)
+        """
+        current_year, current_quarter = AnalyticsService._resolve_latest_period(clinic)
+
+        all_gastos = (
+            Gasto.objects
+            .filter(clinic=clinic)
+            .exclude(_noise_q_gasto())
+            .select_related('proveedor', 'category')
+        )
+        current_year_gastos = all_gastos.filter(year=current_year)
+
+        lifetime_savings, savings_by_category, savings_by_provider = AnalyticsService._calculate_dynamic_savings(all_gastos)
+        current_year_savings, _, _ = AnalyticsService._calculate_dynamic_savings(current_year_gastos)
+
+        compliance_rows = []
+        categories = ExpenseCategory.objects.exclude(_noise_q_category()).order_by('nombre')
+
+        for category in categories:
+            actual_spend = (
+                Gasto.objects
+                .filter(clinic=clinic, year=current_year, quarter=current_quarter, category=category)
+                .aggregate(total=Sum('amount'))
+                .get('total') or Decimal('0.00')
+            )
+            threshold = category.min_quarterly_consumption or Decimal('0.00')
+
+            category_provider_saving = (
+                Proveedor.objects
+                .filter(activo=True, categorias__nombre__iexact=category.nombre, ahorro_estimado__isnull=False)
+                .aggregate(avg=Avg('ahorro_estimado'))
+                .get('avg')
+            ) or Decimal('0.00')
+
+            is_optimized = actual_spend >= threshold if threshold > Decimal('0.00') else actual_spend > Decimal('0.00')
+            estimated_pct = float(category_provider_saving * Decimal('100.00'))
+            status = 'optimized' if is_optimized else 'potential'
+
+            alert_message = None
+            if status == 'potential':
+                alert_message = (
+                    f"Detectamos gasto externo. Pasa tus compras de {category.nombre} "
+                    f"a DQ para ahorrar un {estimated_pct:.1f}% adicional"
+                )
+
+            compliance_rows.append({
+                "category_id": category.id,
+                "category_name": category.nombre,
+                "actual_spend": float(actual_spend),
+                "threshold": float(threshold),
+                "status": status,
+                "estimated_extra_saving_pct": estimated_pct,
+                "alert_message": alert_message,
+            })
+
+        optimized = [row for row in compliance_rows if row['status'] == 'optimized']
+        potential = [row for row in compliance_rows if row['status'] == 'potential']
+
+        optimized.sort(key=lambda x: x['actual_spend'], reverse=True)
+        potential.sort(key=lambda x: x['actual_spend'])
+
+        return {
+            "period": {
+                "year": current_year,
+                "quarter": current_quarter,
+                "label": f"Q{current_quarter} {current_year}",
+            },
+            "savings": {
+                "lifetime_total": lifetime_savings,
+                "current_year_total": current_year_savings,
+                "by_category": savings_by_category,
+                "by_provider": savings_by_provider,
+            },
+            "compliance": {
+                "optimized_categories": optimized,
+                "potential_savings_categories": potential,
+                "all_categories": compliance_rows,
+            },
+        }
+
     # ── Wealth Management Insights ──────────────────────────────────────────
 
     @staticmethod
-    def generate_wealth_management_insights(clinic, current_year, current_quarter,
+    def generate_wealth_management_insights(clinic, current_q_filter,
                                             total_current_spend, total_savings,
-                                            marketplace_name_map=None):
+                                            marketplace_name_map=None,
+                                            categories=None):
         """
         Generates:
          - wealth_management: { realized_savings, total_opportunity, top_opportunity_category }
@@ -142,7 +401,8 @@ class AnalyticsService:
 
         all_gastos = (
             Gasto.objects
-            .filter(clinic=clinic, year=current_year, quarter=current_quarter)
+            .filter(clinic=clinic)
+            .filter(current_q_filter)
             .exclude(_noise_q_gasto())
             .values('category__id', 'category__nombre', 'proveedor_id', 'amount')
             .annotate(total=Sum('amount'))
@@ -253,11 +513,10 @@ class AnalyticsService:
 
     @staticmethod
     def get_dashboard_data(clinic, period_str, comparison_mode='yoy'):
-        current_year, current_quarter = AnalyticsService.parse_period(period_str)
-        prev_year, prev_quarter = AnalyticsService.get_comparison_period(
-            current_year, current_quarter, comparison_mode
-        )
-        prev_period_label = f"{prev_year}-Q{prev_quarter}"
+        current_periods = AnalyticsService._parse_period_list(period_str)
+        prev_periods = AnalyticsService._get_comparison_periods(current_periods, comparison_mode)
+        current_q_filter = AnalyticsService._build_period_q(current_periods)
+        prev_q_filter = AnalyticsService._build_period_q(prev_periods)
 
         # ── Pre-load marketplace name map once (avoid N+1) ──────────────────
         marketplace_name_map = _build_marketplace_name_map()
@@ -271,21 +530,20 @@ class AnalyticsService:
 
         for cat in categories:
             current_spend = (
-                Gasto.objects.filter(
-                    clinic=clinic, year=current_year, quarter=current_quarter, category=cat
-                ).aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
+                Gasto.objects.filter(clinic=clinic, category=cat)
+                .filter(current_q_filter)
+                .aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
             )
 
             previous_spend = (
-                Gasto.objects.filter(
-                    clinic=clinic, year=prev_year, quarter=prev_quarter, category=cat
-                ).aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
+                Gasto.objects.filter(clinic=clinic, category=cat)
+                .filter(prev_q_filter)
+                .aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
             )
 
             sector_avg = (
-                Gasto.objects.filter(
-                    clinic__activa=True, year=current_year, quarter=current_quarter, category=cat
-                )
+                Gasto.objects.filter(clinic__activa=True, category=cat)
+                .filter(current_q_filter)
                 .values('clinic')
                 .annotate(clinic_total=Sum('amount'))
                 .aggregate(Avg('clinic_total'))['clinic_total__avg'] or Decimal('0.00')
@@ -296,6 +554,12 @@ class AnalyticsService:
             else:
                 trend_pct = 0.0 if current_spend == 0 else 100.0
 
+            ahorro_aprox_cat = (
+                Gasto.objects.filter(clinic=clinic, category=cat)
+                .filter(current_q_filter)
+                .aggregate(Sum('ahorro_aprox'))['ahorro_aprox__sum'] or Decimal('0.00')
+            )
+
             # ── Marketplace price delta for this category ──────────────────
             cat_key = cat.nombre.lower().strip()
             mkt_min = marketplace_name_map.get(cat_key)
@@ -303,14 +567,10 @@ class AnalyticsService:
             # Savings opportunity: delta between actual spend and marketplace min
             # expressed as a percentage and an absolute amount
             if mkt_min and current_spend > Decimal('0.00'):
-                # Proxy: if clinic spends X in this category and best marketplace
-                # price is mkt_min per unit, estimate potential savings
-                # We use a conservative estimate: 10–30% of unlinked spend
                 generic_spend = (
-                    Gasto.objects.filter(
-                        clinic=clinic, year=current_year, quarter=current_quarter,
-                        category=cat, proveedor__isnull=True
-                    ).aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
+                    Gasto.objects.filter(clinic=clinic, category=cat, proveedor__isnull=True)
+                    .filter(current_q_filter)
+                    .aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
                 )
                 ratio = mkt_min / max(mkt_min * Decimal('1.2'), Decimal('0.01'))
                 opp_pct = max(Decimal('0'), min(Decimal('30'), (Decimal('1') - ratio) * 100))
@@ -331,6 +591,7 @@ class AnalyticsService:
                 "sector_avg": float(sector_avg),
                 "trend_pct": trend_pct,
                 "savings_signal": savings_signal,
+                "ahorro_total_categoria": float(ahorro_aprox_cat),
             })
 
             total_current_spend += current_spend
@@ -339,7 +600,8 @@ class AnalyticsService:
         # ── Dynamic Ahorro Total (formula-based) ─────────────────────────────
         current_gastos_qs = (
             Gasto.objects
-            .filter(clinic=clinic, year=current_year, quarter=current_quarter, proveedor__isnull=False)
+            .filter(clinic=clinic)
+            .filter(current_q_filter)
             .exclude(_noise_q_gasto())
             .select_related('proveedor')
         )
@@ -347,28 +609,38 @@ class AnalyticsService:
         ahorro_por_proveedor_dict = {}
         total_ahorro_dynamic = Decimal('0.00')
 
+        smart_insights = []
+
         for gasto in current_gastos_qs:
             prov = gasto.proveedor
-            desc_dq = prov.descuento_dq
-            desc_mercado = prov.descuento_mercado
+            
+            if prov:
+                ahorro_estimado = prov.ahorro_estimado or Decimal('0.00')
+                desc_dq = prov.descuento_dq or Decimal('0.00')
 
-            divisor = Decimal('1.00') - desc_dq
-            if divisor <= Decimal('0.00'):
-                divisor = Decimal('1.00')
+                if desc_dq > Decimal('0.00'):
+                    divisor = Decimal('1.00') - desc_dq
+                    ahorro_linea = gasto.amount * (ahorro_estimado / divisor)
+                else:
+                    ahorro_linea = gasto.amount * ahorro_estimado
+            else:
+                ahorro_linea = Decimal('0.00')
 
-            tarifa_base = gasto.amount / divisor
-            costo_mercado = tarifa_base * (Decimal('1.00') - desc_mercado)
-            ahorro_linea = costo_mercado - gasto.amount
+            # We don't add ahorro_aprox from the file directly anymore if we're doing the dynamic calc,
+            # but we can fallback if calculated is 0:
+            if ahorro_linea == Decimal('0.00') and gasto.ahorro_aprox and gasto.ahorro_aprox > Decimal('0.00'):
+                ahorro_linea = gasto.ahorro_aprox
 
             total_ahorro_dynamic += ahorro_linea
 
-            prov_name = prov.nombre
+            prov_name = prov.nombre if prov else 'Desconocido'
             if prov_name not in ahorro_por_proveedor_dict:
-                diferencial = (desc_dq - desc_mercado) * Decimal('100.00')
+                diferencial = float(ahorro_estimado * Decimal('100.00')) if prov else 0.0
                 ahorro_por_proveedor_dict[prov_name] = {
                     "proveedor_nombre": prov_name,
+                    "nombre_proveedor": prov_name,  # explicit alias for frontend
                     "compras": Decimal('0.00'),
-                    "diferencial": float(diferencial),
+                    "diferencial": diferencial,
                     "ahorro": Decimal('0.00'),
                 }
             ahorro_por_proveedor_dict[prov_name]["compras"] += gasto.amount
@@ -378,14 +650,21 @@ class AnalyticsService:
 
         ahorro_por_proveedor = []
         for prop in ahorro_por_proveedor_dict.values():
-            prop["compras"] = float(prop["compras"])
-            prop["ahorro"] = float(prop["ahorro"])
+            compras_float = float(prop["compras"])
+            ahorro_float = float(prop["ahorro"])
+            prop["compras"] = compras_float
+            prop["valor"] = compras_float  # explicit alias for frontend pie chart
+            prop["ahorro"] = ahorro_float
             ahorro_por_proveedor.append(prop)
+
+        # Sort by spend descending so the pie chart shows top providers first
+        ahorro_por_proveedor.sort(key=lambda x: x["valor"], reverse=True)
 
         # ── Ahorro Potencial (leakage on generic spend) ──────────────────────
         generic_gastos_sum = (
             Gasto.objects
-            .filter(clinic=clinic, year=current_year, quarter=current_quarter, proveedor__isnull=True)
+            .filter(clinic=clinic, proveedor__isnull=True)
+            .filter(current_q_filter)
             .exclude(_noise_q_gasto())
             .aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
         )
@@ -398,10 +677,9 @@ class AnalyticsService:
             cat_key = cat.nombre.lower().strip()
             mkt_min = marketplace_name_map.get(cat_key)
             cat_generic = (
-                Gasto.objects.filter(
-                    clinic=clinic, year=current_year, quarter=current_quarter,
-                    category=cat, proveedor__isnull=True
-                ).aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
+                Gasto.objects.filter(clinic=clinic, category=cat, proveedor__isnull=True)
+                .filter(current_q_filter)
+                .aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
             )
             if cat_generic > Decimal('0.00'):
                 if mkt_min:
@@ -420,6 +698,62 @@ class AnalyticsService:
         else:
             spend_per_box = None
             ahorro_potencial_por_box = None
+
+        # ── Optimization Alerts (Compliance by Category) ───────────────────────
+        # For each category, check if the clinic spends significantly less than
+        # the sector average. Zero or near-zero spend in a category means the
+        # clinic is likely buying outside DQ group agreements.
+        SECTOR_LOW_THRESHOLD = Decimal('0.20')  # below 20% of sector avg → alert
+
+        for cat in categories:
+            cat_spend = (
+                Gasto.objects.filter(clinic=clinic, category=cat)
+                .filter(current_q_filter)
+                .aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
+            )
+
+            # Compute sector average for this category across all active clinics
+            sector_avg_row = (
+                Gasto.objects
+                .filter(clinic__activa=True, category=cat)
+                .filter(current_q_filter)
+                .values('clinic')
+                .annotate(clinic_total=Sum('amount'))
+                .aggregate(Avg('clinic_total'))
+            )
+            sector_avg_cat = Decimal(str(sector_avg_row['clinic_total__avg'] or 0))
+
+            # Only alert if sector avg is meaningful (> 100€) to avoid noise
+            if sector_avg_cat < Decimal('100.00'):
+                continue
+
+            low_threshold = sector_avg_cat * SECTOR_LOW_THRESHOLD
+
+            if cat_spend < low_threshold:
+                # Estimate potential savings: the gap * avg group savings rate (15%)
+                gap = sector_avg_cat - cat_spend
+                potential_saving = gap * Decimal('0.15')
+
+                if cat_spend == Decimal('0.00'):
+                    msg = (
+                        f"No registras ningún gasto en {cat.nombre} este periodo. "
+                        f"La media del grupo es {float(sector_avg_cat):,.0f}€/trimestre. "
+                        f"Podrías estar realizando estas compras fuera de los acuerdos DQ y perdiendo "
+                        f"hasta {float(potential_saving):,.0f}€ en ahorro estimado."
+                    )
+                else:
+                    msg = (
+                        f"Tu gasto en {cat.nombre} ({float(cat_spend):,.0f}€) está muy por debajo "
+                        f"de la media del grupo ({float(sector_avg_cat):,.0f}€). "
+                        f"Parte de tus compras en esta categoría podrían estar fuera de los acuerdos DQ."
+                    )
+
+                smart_insights.append({
+                    "title": "Potencial No Aprovechado",
+                    "description": msg,
+                    "type": "warning",
+                    "impact_value": float(potential_saving)
+                })
 
         # ── Proveedores activos ───────────────────────────────────────────────
         proveedores_activos = Pedido.objects.filter(clinica=clinic).values('proveedor').distinct().count()
@@ -441,14 +775,14 @@ class AnalyticsService:
 
         # ── Wealth Management & Diagnostic ───────────────────────────────────
         wealth_management, diagnostic = AnalyticsService.generate_wealth_management_insights(
-            clinic, current_year, current_quarter,
+            clinic, current_q_filter,
             total_current_spend, total_savings,
             marketplace_name_map=marketplace_name_map,
         )
 
         return {
-            "period_label": f"Q{current_quarter} {current_year}",
-            "comparison_label": f"Q{prev_quarter} {prev_year}",
+            "period_label": AnalyticsService._period_label(current_periods),
+            "comparison_label": AnalyticsService._period_label(prev_periods),
             "kpis": {
                 "total_spend": float(total_current_spend),
                 "total_savings": float(total_savings),
@@ -465,4 +799,5 @@ class AnalyticsService:
             "ahorro_por_proveedor": ahorro_por_proveedor,
             "wealth_management": wealth_management,
             "diagnostic_breakdown": diagnostic,
+            "smart_insights": smart_insights,
         }

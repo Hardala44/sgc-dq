@@ -15,36 +15,9 @@ interface MovimientoPuntos {
     puntos: number;
 }
 
-const premios: Premio[] = [
-    {
-        id: 1,
-        nombre: 'iPad Pro',
-        descripcion: 'Ideal para mostrar planes de tratamiento y firmar consentimientos en consulta.',
-        coste: 1500,
-        categoria: 'Tecnologia',
-    },
-    {
-        id: 2,
-        nombre: 'Curso de Estetica Avanzada',
-        descripcion: 'Formacion premium para elevar el ticket medio en tratamientos esteticos.',
-        coste: 980,
-        categoria: 'Formacion',
-    },
-    {
-        id: 3,
-        nombre: 'Kit de Turbinas',
-        descripcion: 'Set profesional de alto rendimiento para mejorar continuidad operativa en gabinete.',
-        coste: 720,
-        categoria: 'Equipamiento',
-    },
-    {
-        id: 4,
-        nombre: 'Lampara de Polimerizar',
-        descripcion: 'Equipo LED de curado rapido con potencia clinica y ergonomia de ultima generacion.',
-        coste: 540,
-        categoria: 'Instrumental',
-    },
-];
+import { useState, useEffect } from 'react';
+import api from '../services/api';
+import toast from 'react-hot-toast';
 
 const historial: MovimientoPuntos[] = [
     {
@@ -67,14 +40,33 @@ const historial: MovimientoPuntos[] = [
     },
 ];
 
-const saldoActual = 1250;
-const siguientePremio = premios[0];
-const puntosRestantes = Math.max(siguientePremio.coste - saldoActual, 0);
-const progreso = Math.min((saldoActual / siguientePremio.coste) * 100, 100);
-
 const formatPoints = (value: number) => new Intl.NumberFormat('es-ES').format(value);
 
 const MisPuntos = () => {
+    const [premios, setPremios] = useState<Premio[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchPremios = async () => {
+            try {
+                const response = await api.get('/incentivos/premios/');
+                // Only show active rewards to the user
+                setPremios(response.data.filter((p: any) => p.activo));
+            } catch (error) {
+                console.error("Error fetching premios:", error);
+                toast.error("Error cargando el catálogo de premios.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchPremios();
+    }, []);
+
+    const saldoActual = 1250;
+    const siguientePremio = premios.length > 0 ? premios[0] : null;
+    const puntosRestantes = siguientePremio ? Math.max(siguientePremio.coste - saldoActual, 0) : 0;
+    const progreso = siguientePremio ? Math.min((saldoActual / siguientePremio.coste) * 100, 100) : 0;
     return (
         <div className="mx-auto w-full max-w-7xl py-10">
             <div className="mb-8 flex flex-col gap-2">
@@ -138,7 +130,9 @@ const MisPuntos = () => {
                     <div>
                         <h3 className="text-base font-semibold text-slate-900">Progreso hacia tu siguiente premio</h3>
                         <p className="text-sm text-slate-500">
-                            Te faltan {formatPoints(puntosRestantes)} puntos para: {siguientePremio.nombre}
+                            {siguientePremio 
+                                ? `Te faltan ${formatPoints(puntosRestantes)} puntos para: ${siguientePremio.nombre}`
+                                : 'Cargando catálogo de premios...'}
                         </p>
                     </div>
                 </div>

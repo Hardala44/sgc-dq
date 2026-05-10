@@ -9,9 +9,9 @@ from .views import (
 router = DefaultRouter()
 # Legacy routes
 router.register('productos', ProductoViewSet, basename='producto-legado')
-router.register('proveedores', ProveedorViewSet)
+router.register('proveedores', ProveedorViewSet, basename='proveedor')
 router.register('categorias', CategoriaViewSet)
-router.register('ofertas', OfertaViewSet)
+router.register('ofertas', OfertaViewSet, basename='oferta')
 router.register('leads', LeadSolicitudViewSet)
 # Marketplace routes
 router.register('catalogo', ProductoMarketplaceViewSet, basename='catalogo')

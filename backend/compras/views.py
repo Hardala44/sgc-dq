@@ -32,12 +32,18 @@ class CategoriaViewSet(ModelViewSet):
 
 
 class ProveedorViewSet(ModelViewSet):
-    queryset = Proveedor.objects.filter(activo=True).prefetch_related('categorias')
     serializer_class = ProveedorSerializer
     pagination_class = None
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['categorias']
     search_fields = ['nombre']
+
+    def get_queryset(self):
+        qs = Proveedor.objects.prefetch_related('categorias')
+        user = self.request.user
+        if user.is_authenticated and (user.is_staff or getattr(user, 'rol', '') == 'admin_dq'):
+            return qs
+        return qs.filter(activo=True)
 
 
 class ProductoViewSet(ModelViewSet):
@@ -49,8 +55,14 @@ class ProductoViewSet(ModelViewSet):
 
 
 class OfertaViewSet(ModelViewSet):
-    queryset = Oferta.objects.filter(activa=True)
     serializer_class = OfertaSerializer
+
+    def get_queryset(self):
+        qs = Oferta.objects.all()
+        user = self.request.user
+        if user.is_authenticated and (user.is_staff or getattr(user, 'rol', '') == 'admin_dq'):
+            return qs
+        return qs.filter(activa=True)
 
 
 class LeadSolicitudViewSet(ModelViewSet):
@@ -83,13 +95,13 @@ class ProductoMarketplaceViewSet(ModelViewSet):
     ordering = ['nombre']
 
     def get_queryset(self):
-        return (
-            Producto.objects.filter(activo=True)
-            .prefetch_related('ofertas__proveedor')
-            .annotate(
-                supplier_count=Count('ofertas__proveedor', distinct=True),
-            )
+        user = self.request.user
+        qs = Producto.objects.prefetch_related('ofertas__proveedor').annotate(
+            supplier_count=Count('ofertas__proveedor', distinct=True),
         )
+        if user.is_authenticated and (user.is_staff or getattr(user, 'rol', '') == 'admin_dq'):
+            return qs
+        return qs.filter(activo=True)
 
 
 class ProveedorOfertaViewSet(ModelViewSet):

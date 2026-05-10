@@ -1,20 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip as RechartsTooltip,
-    Legend,
-    ResponsiveContainer,
-    PieChart,
-    Pie,
-    Cell,
+    BarChart, Bar, XAxis, YAxis, CartesianGrid,
+    Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
+    PieChart, Pie, Cell,
 } from 'recharts';
 import { useAuth } from '../context/AuthContext';
-import { TrendingUp, TrendingDown, DollarSign, Box, AlertTriangle, CheckCircle } from 'lucide-react';
+import { useClinic } from '../context/ClinicContext';
+import { TrendingUp, DollarSign, Box, AlertTriangle, CheckCircle } from 'lucide-react';
 import api from '../services/api';
+import PeriodSelector from '../components/PeriodSelector';
 
 interface KPI {
     total_spend: number;
@@ -64,11 +58,12 @@ interface DashboardData {
         diferencial: number;
         ahorro: number;
     }>;
-}
-
-interface Clinic {
-    id: string;
-    nombre: string;
+    smart_insights?: Array<{
+        title: string;
+        description: string;
+        type: string;
+        impact_value?: number;
+    }>;
 }
 
 interface SmartInsightItem {
@@ -77,106 +72,122 @@ interface SmartInsightItem {
     message: string;
 }
 
+// Custom tick that wraps long category names into up to 2 lines
+const CustomXAxisTick = ({ x, y, payload }: any) => {
+    const MAX_CHARS = 14; // chars per line before wrapping
+    const words = (payload.value as string).split(' ');
+    const lines: string[] = [];
+    let current = '';
+    for (const word of words) {
+        const candidate = current ? `${current} ${word}` : word;
+        if (candidate.length > MAX_CHARS && current) {
+            lines.push(current);
+            current = word;
+        } else {
+            current = candidate;
+        }
+    }
+    if (current) lines.push(current);
+    // Cap at 2 lines, abbreviate overflow
+    const displayLines = lines.length > 2 ? [lines[0], lines.slice(1).join(' ').substring(0, MAX_CHARS) + '…'] : lines;
+    const lineHeight = 13;
+    const totalHeight = displayLines.length * lineHeight;
+    return (
+        <g transform={`translate(${x},${y + 8})`}>
+            {displayLines.map((line, i) => (
+                <text
+                    key={i}
+                    x={0}
+                    y={i * lineHeight - (totalHeight / 2 - lineHeight / 2)}
+                    textAnchor="middle"
+                    fill="#64748B"
+                    fontSize={10}
+                    fontFamily="Inter, system-ui, sans-serif"
+                >
+                    {line}
+                </text>
+            ))}
+        </g>
+    );
+};
+
 const DashboardAnalytics = () => {
     const { token } = useAuth();
-    const [period, setPeriod] = useState('2025-Q1');
+    const { activeClinicId } = useClinic();
+    const [period, setPeriod] = useState('');
     const [comparisonMode, setComparisonMode] = useState<'yoy' | 'qoq'>('yoy');
-    const [clinics, setClinics] = useState<Clinic[]>([]);
-    const [selectedClinicId, setSelectedClinicId] = useState<string>('');
     const [datosKpis, setDatosKpis] = useState<KPI | null>(null);
     const [datosCategorias, setDatosCategorias] = useState<CategoryData[]>([]);
     const [datosProveedores, setDatosProveedores] = useState<AhorroPorProveedor[]>([]);
+    const [backendInsights, setBackendInsights] = useState<Array<any>>([]);
     const [periodLabel, setPeriodLabel] = useState('');
     const [comparisonLabel, setComparisonLabel] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    // Bumped whenever clinic settings (num_boxes) change — triggers analytics re-fetch
+    const [refreshVersion, setRefreshVersion] = useState(0);
 
     const providerChartColors = ['#0f172a', '#2563eb', '#0f766e', '#ea580c', '#7c3aed', '#db2777'];
 
     const smartInsights = useMemo(() => {
-        const categoriesWithDiff = datosCategorias.map((category) => {
-            const absoluteChange = category.gasto_actual - category.gasto_anterior;
-            const percentChange = category.gasto_anterior > 0
-                ? (absoluteChange / category.gasto_anterior) * 100
-                : (category.gasto_actual > 0 ? 100 : 0);
-
-            return {
+        // ── Best performing category (biggest absolute spend reduction) ──────
+        const categoriesWithDiff = datosCategorias
+            .filter(c => c.gasto_anterior > 0)
+            .map((category) => ({
                 ...category,
-                absoluteChange,
-                percentChange,
-            };
-        });
+                absoluteChange: category.gasto_actual - category.gasto_anterior,
+            }));
 
         const bestOptimization = categoriesWithDiff.length > 0
-            ? [...categoriesWithDiff].sort((left, right) => left.absoluteChange - right.absoluteChange)[0]
+            ? [...categoriesWithDiff].sort((a, b) => a.absoluteChange - b.absoluteChange)[0]
             : null;
 
-        const biggestAlert = categoriesWithDiff.length > 0
-            ? [...categoriesWithDiff].sort((left, right) => right.percentChange - left.percentChange)[0]
-            : null;
+        // ── Local positive summary insight (category-based) ──────────────────
+        const localPositive: SmartInsightItem = {
+            id: 'local-positive',
+            tone: 'positive',
+            message: bestOptimization && bestOptimization.absoluteChange < 0
+                ? `Buena gestión en ${bestOptimization.nombre_categoria}: has reducido el gasto un ${Math.abs(((bestOptimization.absoluteChange / bestOptimization.gasto_anterior) * 100)).toFixed(1)}% respecto al periodo anterior.`
+                : 'El gasto global del periodo se mantiene estable respecto al periodo de comparación.',
+        };
 
-        const topProviders = [...datosProveedores]
-            .sort((left, right) => right.valor - left.valor)
-            .slice(0, 3);
+        // ── Dynamic insights from backend (category compliance alerts) ───────
+        const dynamicInsights: SmartInsightItem[] = backendInsights.map((insight, idx) => ({
+            id: `backend-${idx}`,
+            tone: insight.type === 'warning' ? 'warning' : 'positive',
+            message: insight.description,
+        }));
 
-        const providerNames = topProviders.map((provider) => provider.nombre_proveedor);
-        const simulatedOpportunity = topProviders.reduce((total, provider) => total + provider.valor, 0) * 0.12;
+        // ── Optimization opportunity value ────────────────────────────────────
         const optimizationValue = datosKpis?.ahorro_potencial && datosKpis.ahorro_potencial > 0
             ? datosKpis.ahorro_potencial
-            : simulatedOpportunity;
+            : 0;
 
-        const insights: SmartInsightItem[] = [
-            {
-                id: 'positive',
-                tone: 'positive',
-                message: bestOptimization
-                    ? `Excelente gestión en ${bestOptimization.nombre_categoria}, has reducido el gasto respecto al periodo anterior.`
-                    : 'Excelente disciplina financiera: mantenéis una evolución de gasto estable respecto al periodo anterior.',
-            },
-            {
-                id: 'warning',
-                tone: 'warning',
-                message: biggestAlert
-                    ? `Atención: Tu gasto en ${biggestAlert.nombre_categoria} ha subido considerablemente. Te recomendamos revisar tarifas con tus proveedores.`
-                    : 'Atención: no detectamos una categoría claramente tensionada, pero conviene revisar periódicamente las tarifas pactadas con proveedores.',
-            },
-        ];
-
-        let opportunityText = 'Detectamos oportunidades de consolidación de compra dentro de tu red actual.';
-
-        if (datosKpis?.ahorro_potencial && datosKpis.ahorro_potencial > 0) {
-            opportunityText = 'Detectado en compras fuera de la red DQ y oportunidades activas de optimización ya estimadas por el sistema.';
-        } else if (providerNames.length > 0) {
-            opportunityText = `Detectamos que centralizando el 100% de tus compras del top 3 de proveedores (${providerNames.join(', ')}), tu ahorro proyectado crecería significativamente.`;
-        }
+        const opportunityText = optimizationValue > 0
+            ? 'Detectado en compras fuera de la red DQ y oportunidades activas de optimización estimadas por el sistema.'
+            : 'Detectamos oportunidades de consolidación de compra dentro de tu red actual.';
 
         return {
-            insights,
+            insights: [localPositive, ...dynamicInsights],
             optimizationValue,
             opportunityText,
         };
-    }, [datosCategorias, datosKpis, datosProveedores]);
+    }, [datosCategorias, datosKpis, backendInsights]);
 
-    // Fetch Clinics on Mount
+    // Listen for clinic settings updates (e.g. num_boxes changed in Settings page)
     useEffect(() => {
-        const fetchClinics = async () => {
-            try {
-                const response = await api.get('/analytics/clinics/');
-                setClinics(response.data);
-                if (response.data.length > 0) {
-                    setSelectedClinicId(response.data[0].id);
-                }
-            } catch (err) {
-                console.error("Error fetching clinics", err);
-            }
+        const handler = () => setRefreshVersion(v => v + 1);
+        window.addEventListener('clinic-settings-updated', handler);
+        window.addEventListener('clinic-context-changed', handler);
+        return () => {
+            window.removeEventListener('clinic-settings-updated', handler);
+            window.removeEventListener('clinic-context-changed', handler);
         };
-        if (token) fetchClinics();
-    }, [token]);
-
+    }, []);
 
     useEffect(() => {
         const fetchData = async () => {
-            if (!selectedClinicId) return; // Wait for clinic selection
+            if (!activeClinicId || !period) return; // Wait for clinic + period selection
 
             setLoading(true);
             setError(null);
@@ -185,7 +196,7 @@ const DashboardAnalytics = () => {
                     params: {
                         period: period,
                         comparison_mode: comparisonMode,
-                        clinic_id: selectedClinicId
+                        clinic_id: activeClinicId
                     }
                 });
 
@@ -210,6 +221,7 @@ const DashboardAnalytics = () => {
                 setDatosKpis(response.data.kpis);
                 setDatosCategorias(mappedCategories);
                 setDatosProveedores(mappedProviders);
+                setBackendInsights(response.data.smart_insights || []);
                 setPeriodLabel(response.data.period_label);
                 setComparisonLabel(response.data.comparison_label);
             } catch (err) {
@@ -225,10 +237,10 @@ const DashboardAnalytics = () => {
             }
         };
 
-        if (token && selectedClinicId) {
+        if (token && activeClinicId) {
             fetchData();
         }
-    }, [period, comparisonMode, token, selectedClinicId]);
+    }, [period, comparisonMode, token, activeClinicId, refreshVersion]);
 
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value);
@@ -264,18 +276,23 @@ const DashboardAnalytics = () => {
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const ProviderTooltip = ({ active, payload }: any) => {
+    const ProviderPieTooltip = ({ active, payload }: any) => {
         if (!active || !payload || !payload.length) {
             return null;
         }
 
-        const provider = payload[0].payload as AhorroPorProveedor;
+        const prov = payload[0].payload as AhorroPorProveedor;
+        const total = datosProveedores.reduce((sum, p) => sum + p.valor, 0);
+        const pct = total > 0 ? ((prov.valor / total) * 100).toFixed(1) : '0.0';
 
         return (
             <div className="bg-white p-4 border border-slate-200 shadow-sm rounded-lg">
-                <p className="font-bold text-slate-900 mb-2">{provider.nombre_proveedor}</p>
-                <p className="text-sm text-slate-500">Gasto: <span className="font-semibold text-slate-900">{formatCurrency(provider.valor)}</span></p>
-                <p className="text-sm text-slate-500">Ahorro: <span className="font-semibold text-emerald-600">{formatCurrency(provider.ahorro)}</span></p>
+                <p className="font-bold text-slate-900 mb-2">{prov.nombre_proveedor}</p>
+                <p className="text-sm text-slate-500">Gasto: <span className="font-semibold text-slate-900">{formatCurrency(prov.valor)}</span></p>
+                <p className="text-sm text-slate-500">Peso: <span className="font-semibold text-slate-900">{pct}%</span></p>
+                {prov.ahorro > 0 && (
+                    <p className="text-sm text-emerald-600">Ahorro estimado: <span className="font-semibold">{formatCurrency(prov.ahorro)}</span></p>
+                )}
             </div>
         );
     };
@@ -301,35 +318,16 @@ const DashboardAnalytics = () => {
             <div className="flex flex-col md:flex-row justify-between items-center bg-white p-5 rounded-xl shadow-sm border border-slate-200">
                 <div>
                     <h1 className="text-xl font-serif font-bold text-slate-900 tracking-tight">Análisis Financiero</h1>
-                    <div className="flex items-center gap-3 mt-2">
-                        {clinics.length > 1 && (
-                            <div className="mr-3">
-                                <select
-                                    value={selectedClinicId}
-                                    onChange={(e) => setSelectedClinicId(e.target.value)}
-                                    className="bg-white border border-slate-200 text-slate-900 text-xs rounded-md focus:ring-slate-500 focus:border-slate-500 block p-1.5"
-                                >
-                                    {clinics.map(c => (
-                                        <option key={c.id} value={c.id}>{c.nombre}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        )}
-
+                    <div className="flex items-center gap-3 mt-2 flex-wrap">
                         <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Visualizando:</p>
-                        <select
+                        <PeriodSelector
                             value={period}
-                            onChange={(e) => setPeriod(e.target.value)}
-                            className="bg-slate-50 border border-slate-200 text-slate-900 text-xs font-semibold tracking-tight rounded-md focus:ring-slate-500 focus:border-slate-500 block p-1.5"
-                        >
-                            <option value="2025-Q2">Q2 2025</option>
-                            <option value="2025-Q1">Q1 2025</option>
-                            <option value="2024-Q4">Q4 2024</option>
-                            <option value="2024-Q3">Q3 2024</option>
-                            <option value="2024-Q2">Q2 2024</option>
-                            <option value="2024-Q1">Q1 2024</option>
-                        </select>
-                        <span className="text-slate-400 text-xs">vs {comparisonLabel || '...'}</span>
+                            onChange={setPeriod}
+                            clinicId={activeClinicId}
+                        />
+                        {comparisonLabel && (
+                            <span className="text-slate-400 text-xs">vs {comparisonLabel}</span>
+                        )}
                     </div>
                 </div>
 
@@ -371,19 +369,13 @@ const DashboardAnalytics = () => {
 
                 <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-start justify-between">
                     <div>
-                        <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Ahorro vs Periodo Anterior</p>
-                        <h3 className={`text-2xl font-bold tracking-tight mt-1 ${datosKpis && datosKpis.total_savings >= 0 ? 'text-emerald-600' : 'text-rose-600'
-                            }`}>
+                        <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Ahorro del Periodo</p>
+                        <h3 className="text-2xl font-bold tracking-tight mt-1 text-slate-900">
                             {datosKpis ? formatCurrency(datosKpis.total_savings) : '...'}
                         </h3>
                     </div>
-                    <div className={`p-2.5 rounded-lg border ${datosKpis && datosKpis.total_savings >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-100'
-                        }`}>
-                        {datosKpis && datosKpis.total_savings >= 0 ? (
-                            <TrendingUp className="w-5 h-5 text-emerald-600" />
-                        ) : (
-                            <TrendingDown className="w-5 h-5 text-rose-600" />
-                        )}
+                    <div className="p-2.5 rounded-lg border bg-emerald-50 border-emerald-100">
+                        <TrendingUp className="w-5 h-5 text-emerald-600" />
                     </div>
                 </div>
 
@@ -413,12 +405,12 @@ const DashboardAnalytics = () => {
                                         : 'bg-amber-50 border-amber-100'
                                         }`}>
                                         {insight.tone === 'positive' ? (
-                                            <CheckCircle className="w-4 h-4 text-emerald-600" />
+                                            <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                                         ) : (
-                                            <AlertTriangle className="w-4 h-4 text-amber-600" />
+                                            <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
                                         )}
                                     </div>
-                                    <p className="text-sm text-slate-700 leading-relaxed">{insight.message}</p>
+                                    <p className="text-sm text-slate-700 leading-relaxed font-medium">{insight.message}</p>
                                 </div>
                             ))}
                         </div>
@@ -445,19 +437,20 @@ const DashboardAnalytics = () => {
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <div className="xl:col-span-2 bg-white p-5 rounded-xl shadow-sm border border-slate-200">
                     <h3 className="text-lg font-bold text-slate-900 tracking-tight mb-5">Desglose por Categoría</h3>
-                    <div style={{ width: '100%', height: 350 }}>
+                    <div style={{ width: '100%', height: 380 }}>
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart
                                 data={datosCategorias}
-                                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                                margin={{ top: 20, right: 30, left: 20, bottom: 10 }}
                             >
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                                 <XAxis
                                     dataKey="nombre_categoria"
                                     axisLine={false}
                                     tickLine={false}
-                                    tick={{ fill: '#64748B', fontSize: 12 }}
-                                    dy={10}
+                                    tick={<CustomXAxisTick />}
+                                    interval={0}
+                                    height={55}
                                 />
                                 <YAxis
                                     axisLine={false}
@@ -472,14 +465,14 @@ const DashboardAnalytics = () => {
                                     name="Periodo Anterior"
                                     fill="#cbd5e1"
                                     radius={[4, 4, 0, 0]}
-                                    barSize={30}
+                                    barSize={22}
                                 />
                                 <Bar
                                     dataKey="gasto_actual"
                                     name="Periodo Actual"
                                     fill="#0f172a"
                                     radius={[4, 4, 0, 0]}
-                                    barSize={30}
+                                    barSize={22}
                                 />
                             </BarChart>
                         </ResponsiveContainer>
@@ -487,86 +480,38 @@ const DashboardAnalytics = () => {
                 </div>
 
                 <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                    <h3 className="text-lg font-bold text-slate-900 tracking-tight mb-5">Distribución por Proveedor</h3>
+                    <h3 className="text-lg font-bold text-slate-900 tracking-tight mb-5">Gasto por Proveedor</h3>
                     <div style={{ width: '100%', height: 350 }}>
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
-                                    data={datosProveedores}
+                                    data={datosProveedores.filter(p => p.valor > 0).slice(0, 8)}
                                     dataKey="valor"
                                     nameKey="nombre_proveedor"
                                     innerRadius={70}
                                     outerRadius={110}
                                     paddingAngle={3}
                                 >
-                                    {datosProveedores.map((provider, index) => (
+                                    {datosProveedores.filter(p => p.valor > 0).slice(0, 8).map((prov, index) => (
                                         <Cell
-                                            key={provider.nombre_proveedor}
+                                            key={prov.nombre_proveedor}
                                             fill={providerChartColors[index % providerChartColors.length]}
                                         />
                                     ))}
                                 </Pie>
-                                <RechartsTooltip content={<ProviderTooltip />} />
-                                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
+                                <RechartsTooltip content={<ProviderPieTooltip />} />
+                                <Legend
+                                    formatter={(value) => (
+                                        <span className="text-xs text-slate-600">{value}</span>
+                                    )}
+                                />
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
             </div>
 
-            {/* Insight Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {datosCategorias.map((cat) => {
-                    // Normalize both values to spend-per-box so clinics of different sizes are comparable.
-                    const clinicBoxes = datosKpis?.spend_per_box && datosKpis.spend_per_box > 0
-                        ? datosKpis.total_spend / datosKpis.spend_per_box
-                        : 1;
-                    const currentSpendPerBox = clinicBoxes > 0 ? cat.gasto_actual / clinicBoxes : cat.gasto_actual;
-                    const sectorAvgPerBox = clinicBoxes > 0 ? cat.media_sector / clinicBoxes : cat.media_sector;
 
-                    const diffPct = sectorAvgPerBox > 0
-                        ? ((currentSpendPerBox - sectorAvgPerBox) / sectorAvgPerBox) * 100
-                        : 0;
-                    const isAboveSector = diffPct > 0;
-
-                    return (
-                        <div key={cat.id} className="bg-white p-4 rounded-xl border border-slate-200 hover:shadow-md transition-shadow duration-300">
-                            <div className="flex justify-between items-start mb-3">
-                                <h4 className="font-semibold text-slate-900 tracking-tight">{cat.nombre_categoria}</h4>
-                                <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-md ${!isAboveSector
-                                    ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                                    : 'bg-amber-50 text-amber-600 border border-amber-100'
-                                    }`}>
-                                    {!isAboveSector ? 'Eficiente' : 'Alto'}
-                                </span>
-                            </div>
-
-                            <div className="space-y-2">
-                                <div className="flex justify-between text-xs">
-                                    <span className="text-slate-500 font-medium">Tu Gasto (por Box)</span>
-                                    <span className="font-bold text-slate-900">{formatCurrency(currentSpendPerBox)}</span>
-                                </div>
-                                <div className="flex justify-between text-xs">
-                                    <span className="text-slate-500 font-medium">Media Sector (por Box)</span>
-                                    <span className="font-semibold text-slate-500">{formatCurrency(sectorAvgPerBox)}</span>
-                                </div>
-
-                                <div className="pt-3 border-t border-slate-100 mt-2 flex items-center gap-2">
-                                    {!isAboveSector ? (
-                                        <TrendingDown className="w-4 h-4 text-emerald-500" />
-                                    ) : (
-                                        <TrendingUp className="w-4 h-4 text-amber-500" />
-                                    )}
-                                    <span className={`text-[10px] font-bold uppercase tracking-widest ${!isAboveSector ? 'text-emerald-600' : 'text-amber-600'
-                                        }`}>
-                                        {`${diffPct >= 0 ? '+' : ''}${diffPct.toFixed(1)}% VS MEDIA`}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
         </div>
     );
 };

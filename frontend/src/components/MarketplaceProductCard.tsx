@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Tag, ChevronRight } from 'lucide-react';
 import type { ProductSearchResult, SupplierOffer } from '../types/marketplace';
 import { getPremiumImage } from '../utils/imageMapping';
@@ -18,6 +18,13 @@ const MarketplaceProductCard: React.FC<MarketplaceProductCardProps> = ({ product
   const visibleLogos = proveedoresList.slice(0, MAX_LOGOS);
   const overflowLogos = proveedoresList.length - MAX_LOGOS;
 
+  // ── Image resolution: DB url → fallback on error ─────────────────────────
+  const fallbackSrc = getPremiumImage(producto.nombre, productIndex);
+  const primarySrc = producto.imagen_url && producto.imagen_url.trim() !== ''
+    ? producto.imagen_url
+    : fallbackSrc;
+  const [imgSrc, setImgSrc] = useState<string>(primarySrc);
+
   return (
     <article
       onClick={() => onClick(producto)}
@@ -31,10 +38,16 @@ const MarketplaceProductCard: React.FC<MarketplaceProductCardProps> = ({ product
       <div className="relative h-48 bg-slate-50 overflow-hidden flex-shrink-0">
         <>
           <img
-            src={getPremiumImage(producto.nombre, productIndex)}
+            src={imgSrc}
             alt={producto.nombre}
             loading="lazy"
             className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-700"
+            onError={() => {
+              // If the DB url fails to load, silently switch to the fallback
+              if (imgSrc !== fallbackSrc) {
+                setImgSrc(fallbackSrc);
+              }
+            }}
           />
           {/* Dark scrim for better supplier logo legibility */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-80" />

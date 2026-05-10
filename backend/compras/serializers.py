@@ -41,6 +41,8 @@ ProductoSerializer = ProductoLegadoSerializer
 
 
 class OfertaSerializer(ModelSerializer):
+    producto_nombre = serializers.CharField(source='producto.nombre', read_only=True)
+    
     class Meta:
         model = Oferta
         fields = '__all__'
