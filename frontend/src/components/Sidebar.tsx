@@ -10,7 +10,6 @@ import {
     ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import logoDQ from '../assets/logo-dq.png';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 interface NavItemDef {
@@ -165,15 +164,12 @@ const Sidebar = () => {
         /* group drives all child transitions via group-hover: */
         <aside className="group h-screen w-[72px] hover:w-64 flex flex-col flex-shrink-0 bg-white border-r border-slate-200 transition-[width] duration-300 ease-in-out overflow-hidden">
 
-            {/* ── BLOCK 1: Brand logo ────────────────────────────────────── */}
-            <div className="h-24 flex items-center justify-center shrink-0">
-                <img
-                    src={logoDQ}
-                    alt="DentalQuality"
-                    className="object-contain object-center transition-all duration-300 ease-in-out
-                               w-12 max-h-8
-                               group-hover:w-[160px] group-hover:max-h-14"
-                />
+            {/* ── BLOCK 1: Brand mark ─────────────────────────────────── */}
+            <div className="h-16 flex items-center justify-center shrink-0 border-b border-slate-100">
+                {/* Collapsed: DQ monogram */}
+                <span className="block group-hover:hidden text-lg font-black tracking-tight text-slate-900">DQ</span>
+                {/* Expanded: Full brand name */}
+                <span className="hidden group-hover:block text-[11px] font-bold uppercase tracking-[0.25em] text-slate-400">Dental Quality</span>
             </div>
 
             {/* ── BLOCK 2: Core Navigation ───────────────────────────────── */}

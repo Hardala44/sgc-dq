@@ -5,6 +5,8 @@ __pycache__/
 *.so
 .Python
 env/
+.venv/
+.venv-1/
 build/
 develop-eggs/
 dist/
@@ -48,3 +50,15 @@ dist/
 .vscode/
 .idea/
 .gemini/
+.agent/
+.agents/
+
+# Business data files (sensitive — do not commit)
+*.xlsx
+*.xls
+*.pdf
+*.bak
+ingestion_errors.log
+
+# UI skill tool (unrelated to app)
+ui-ux-pro-max-skill/

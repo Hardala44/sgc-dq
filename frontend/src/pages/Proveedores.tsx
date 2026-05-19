@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { Search, SlidersHorizontal, Building2 } from 'lucide-react';
 import ProviderCard from '../components/ProviderCard';
@@ -35,7 +34,6 @@ interface Proveedor {
 // ── Page Component ────────────────────────────────────────────────────────────
 
 const Proveedores = () => {
-    const navigate = useNavigate();
     const [proveedores, setProveedores] = useState<Proveedor[]>([]);
     const [categorias, setCategorias] = useState<Categoria[]>([]);
     const [loading, setLoading] = useState(true);
@@ -79,11 +77,6 @@ const Proveedores = () => {
 
         fetchData();
     }, [searchTerm, selectedCategory]);
-
-    // Navigate to the Catalog filtered by provider
-    const handleVerAcuerdos = (id: string | number) => {
-        navigate(`/catalogo?proveedor=${id}`);
-    };
 
     // ── Render ──────────────────────────────────────────────────────────────
     return (
@@ -192,7 +185,6 @@ const Proveedores = () => {
                                         url_web:               proveedor.url_web,
                                         condiciones_especiales: proveedor.condiciones_especiales,
                                     }}
-                                    onVerCatalogo={handleVerAcuerdos}
                                 />
                             </div>
                         ))}

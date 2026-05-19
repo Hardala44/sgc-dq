@@ -1,1 +1,0 @@
-DATA: [{'id': 8, 'nombre': 'Guantes Nitrilo Caja x100', 'descripcion': '', 'precio_mercado': '8.00', 'precio_dq': '5.00', 'imagen': None, 'proveedor': 71}]

@@ -1,12 +1,11 @@
 import React, { useEffect } from 'react';
 import {
-  X, ExternalLink, Tag, Building2,
-  CheckCircle2, AlertTriangle, XCircle, HelpCircle,
-  ShieldCheck, PhoneCall, Mail
+  X, Globe, Tag, Building2,
+  CheckCircle2, AlertTriangle, XCircle,
+  PhoneCall, Mail
 } from 'lucide-react';
 import type { ProductSearchResult, SupplierOffer } from '../types/marketplace';
-import { STOCK_LABELS, isPlaceholderUrl } from '../utils/marketplace';
-import CategoryIcon from './CategoryIcon';
+import { STOCK_LABELS } from '../utils/marketplace';
 
 interface ProductoComparacionPanelProps {
   producto: ProductSearchResult | null;
@@ -18,7 +17,7 @@ const StockIcon: React.FC<{ status: SupplierOffer['stock_status'] }> = ({ status
     in_stock: <CheckCircle2 size={14} className="text-emerald-500" />,
     low_stock: <AlertTriangle size={14} className="text-amber-500" />,
     out_of_stock: <XCircle size={14} className="text-red-500" />,
-    unknown: <HelpCircle size={14} className="text-slate-400" />,
+    unknown: null,
   };
   return map[status] ?? map.unknown;
 };
@@ -43,7 +42,6 @@ const ProductoComparacionPanel: React.FC<ProductoComparacionPanelProps> = ({ pro
 
   if (!producto) return null;
 
-  const isPlaceholder = isPlaceholderUrl(producto.imagen_url);
   const suministros = producto.suministros || [];
 
   return (
@@ -75,19 +73,6 @@ const ProductoComparacionPanel: React.FC<ProductoComparacionPanelProps> = ({ pro
           </button>
 
           <div className="flex flex-col sm:flex-row gap-6 p-6">
-              {/* Image Thumbnail */}
-              <div className="w-32 h-32 rounded-xl border border-slate-200 bg-slate-50 overflow-hidden shadow-sm flex-shrink-0 flex items-center justify-center">
-                {isPlaceholder ? (
-                  <CategoryIcon categoryName={producto.categoria_nombre} size={40} />
-                ) : (
-                  <img
-                    src={producto.imagen_url!}
-                    alt={producto.nombre}
-                    className="w-full h-full object-cover mix-blend-multiply"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                  />
-                )}
-              </div>
 
               {/* Product identity block */}
               <div className="flex flex-col justify-center">
@@ -120,10 +105,7 @@ const ProductoComparacionPanel: React.FC<ProductoComparacionPanelProps> = ({ pro
                       {suministros.length === 1 ? 'proveedor' : 'proveedores'} en red
                     </span>
                   </div>
-                  <div className="inline-flex items-center gap-1.5 text-klein-700 text-xs bg-klein-50 px-2.5 py-1 rounded-md font-bold">
-                    <ShieldCheck size={12} />
-                    <span>Condiciones Garantizadas</span>
-                  </div>
+
                 </div>
               </div>
           </div>
@@ -147,46 +129,56 @@ const ProductoComparacionPanel: React.FC<ProductoComparacionPanelProps> = ({ pro
             <div className="space-y-4 pt-4">
               {suministros.map((oficial) => {
                 const stockInfo = STOCK_LABELS[oficial.stock_status] ?? STOCK_LABELS.unknown;
-                const prov = oficial.proveedor;
-                const telHref = prov.contacto_telefono ? `tel:${prov.contacto_telefono}` : null;
-                const mailHref = prov.contacto_email
-                  ? `mailto:${prov.contacto_email}?subject=${encodeURIComponent(`Consulta desde DentalQuality: ${producto.nombre}`)}`
+                
+                // Normalization: Check if it's a nested ProveedorOferta or a flat category-fallback object
+                const isNested = oficial.proveedor && typeof oficial.proveedor === 'object';
+                const provId = isNested ? oficial.proveedor.id : oficial.id;
+                const provNombre = isNested ? oficial.proveedor.nombre : (oficial.nombre ?? '');
+                const provLogo = isNested ? oficial.proveedor.logo : (oficial.logo ?? null);
+                const provTel = isNested ? oficial.proveedor.contacto_telefono : (oficial.contacto_telefono ?? null);
+                const provEmail = isNested ? oficial.proveedor.contacto_email : (oficial.contacto_email ?? null);
+                const provContacto = isNested ? oficial.proveedor.contacto_nombre : (oficial.contacto_nombre ?? null);
+                const provCondiciones = isNested ? oficial.proveedor.condiciones_especiales : (oficial.condiciones_especiales ?? null);
+                
+                // For web URL, backend might have `url_web` or frontend handles alternatives
+                const sourceForWeb = isNested ? oficial.proveedor : oficial;
+                const rawProviderWeb = (sourceForWeb as any).sitio_web || (sourceForWeb as any).website || (sourceForWeb as any).url || (sourceForWeb as any).url_web;
+
+                const telHref = provTel ? `tel:${provTel}` : null;
+                const mailHref = provEmail
+                  ? `mailto:${provEmail}?subject=${encodeURIComponent(`Consulta desde DentalQuality: ${producto.nombre}`)}`
                   : null;
-                const rawProviderWeb = (prov as { sitio_web?: string; website?: string; url?: string; url_web?: string }).sitio_web
-                  || (prov as { sitio_web?: string; website?: string; url?: string; url_web?: string }).website
-                  || (prov as { sitio_web?: string; website?: string; url?: string; url_web?: string }).url
-                  || prov.url_web;
                 const providerWebUrl = rawProviderWeb
                   ? (rawProviderWeb.startsWith('http') ? rawProviderWeb : `https://${rawProviderWeb}`)
                   : null;
 
                 return (
                   <div
-                    key={oficial.id}
-                    className="relative rounded-xl border border-slate-200 bg-white hover:border-klein-300 hover:shadow-md transition-all duration-300 p-5 flex flex-col sm:flex-row gap-4 sm:items-center justify-between"
+                    key={provId}
+                    className="relative rounded-xl border border-slate-200 bg-white hover:border-klein-300 hover:shadow-md transition-all duration-300 p-5 flex flex-col sm:flex-row gap-4 sm:items-start justify-between"
                   >
                     {/* Proveedor Base Info */}
-                    <div className="flex items-center gap-4 flex-1">
-                      {prov.logo ? (
-                        <div className="w-12 h-12 rounded-full border border-slate-100 p-1 flex-shrink-0 relative">
+                    <div className="flex items-start gap-4 flex-1">
+                      {provLogo ? (
+                        <div className="w-12 h-12 mt-1 rounded-full border border-slate-100 p-1 flex-shrink-0 relative bg-white">
                           <img
-                            src={prov.logo}
-                            alt={prov.nombre}
+                            src={provLogo}
+                            alt={provNombre}
                             className="w-full h-full object-contain"
                           />
                         </div>
                       ) : (
-                        <div className="w-12 h-12 rounded-full bg-slate-50 flex-shrink-0 flex items-center justify-center border border-slate-100">
+                        <div className="w-12 h-12 mt-1 rounded-full bg-slate-50 flex-shrink-0 flex items-center justify-center border border-slate-100">
                           <Building2 size={16} className="text-slate-400" />
                         </div>
                       )}
                       
-                      <div>
+                      <div className="flex-1">
                         <h4 className="text-base font-bold text-slate-900 leading-none mb-1">
-                           {prov.nombre}
+                           {provNombre}
                         </h4>
                         
-                        <div className="flex items-center gap-3 mt-1.5">
+                        <div className="flex flex-wrap items-center gap-3 mt-1.5">
                             {/* Stock status */}
                             <div className="flex items-center gap-1">
                               <StockIcon status={oficial.stock_status} />
@@ -196,23 +188,47 @@ const ProductoComparacionPanel: React.FC<ProductoComparacionPanelProps> = ({ pro
                             </div>
                             
                             {/* Contact Lead (if exists) */}
-                            {prov.contacto_nombre && (
+                            {provContacto && (
                                 <div className="flex items-center gap-1 border-l border-slate-200 pl-3">
                                    <span className="text-xs text-slate-500 font-medium whitespace-nowrap">
-                                     Ref: <span className="text-slate-700">{prov.contacto_nombre}</span>
+                                     Ref: <span className="text-slate-700">{provContacto}</span>
                                    </span>
                                 </div>
                             )}
                         </div>
+
+                        {/* Condiciones Especiales */}
+                        {provCondiciones && (
+                          <div className="mt-3">
+                            <div className="flex flex-col gap-1 text-[11px] text-slate-700 font-medium">
+                              {provCondiciones.split('\n').map((line, i) => {
+                                const trimmed = line.trim();
+                                if (!trimmed) return null;
+                                
+                                const isBullet = /^[-•*]/.test(trimmed);
+                                const cleanText = trimmed.replace(/^[-•*]\s*/, '').trim();
+                                
+                                if (!cleanText) return null;
+                                
+                                return (
+                                  <div key={i} className={`flex items-start gap-1.5 ${isBullet ? 'pl-2' : 'mt-1'}`}>
+                                    {isBullet && <div className="w-1 h-1 rounded-full bg-slate-400 shrink-0 mt-1.5" />}
+                                    <span className={isBullet ? 'text-slate-600' : 'text-slate-800 font-bold'}>{cleanText}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     {/* Actions B2B Flow */}
-                    <div className="flex items-center gap-2.5 shrink-0 border-t sm:border-t-0 border-slate-100 pt-3 sm:pt-0">
+                    <div className="flex flex-col gap-2 shrink-0 border-t sm:border-t-0 border-slate-100 pt-3 sm:pt-0 w-full sm:w-[140px]">
                        {/* Direct Call */}
                        <a 
                           href={telHref ?? '#'}
-                          className={`inline-flex items-center justify-center gap-2 px-4 py-2 text-[11px] font-bold uppercase tracking-widest rounded-lg border transition-all ${
+                          className={`flex items-center justify-center gap-2 px-4 py-2 text-[11px] font-bold uppercase tracking-widest rounded-lg border transition-all ${
                             telHref
                             ? 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50 shadow-sm'
                             : 'bg-slate-50 border-slate-100 text-slate-400 cursor-not-allowed opacity-50'
@@ -226,7 +242,7 @@ const ProductoComparacionPanel: React.FC<ProductoComparacionPanelProps> = ({ pro
                        {/* Direct Mail (Primary) */}
                        <a 
                           href={mailHref ?? '#'}
-                          className={`inline-flex items-center justify-center gap-2 px-4 py-2 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-all shadow-sm ${
+                          className={`flex items-center justify-center gap-2 px-4 py-2 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-all shadow-sm ${
                             mailHref
                             ? 'bg-klein-600 text-white hover:bg-klein-700 shadow-klein-600/20'
                             : 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-50'
@@ -243,15 +259,15 @@ const ProductoComparacionPanel: React.FC<ProductoComparacionPanelProps> = ({ pro
                            target={providerWebUrl ? '_blank' : undefined}
                            rel={providerWebUrl ? 'noopener noreferrer' : undefined}
                            title={providerWebUrl ? 'Abrir web del proveedor' : 'Sin web disponible'}
-                           className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ml-1 border ${
+                           className={`flex items-center justify-center gap-2 px-4 py-2 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-all border ${
                              providerWebUrl
-                               ? 'text-slate-400 hover:text-slate-700 hover:bg-slate-50 border-transparent hover:border-slate-200'
-                             : 'text-slate-300 bg-slate-50 border-slate-100 cursor-not-allowed opacity-50'
+                               ? 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50 shadow-sm'
+                             : 'bg-slate-50 border-slate-100 text-slate-400 cursor-not-allowed opacity-50'
                            }`}
                            onClick={(e) => !providerWebUrl && e.preventDefault()}
                            {...(providerWebUrl ? {} : { 'aria-disabled': true })}
                        >
-                          <ExternalLink size={16} />
+                          <Globe size={14} /> Web
                        </a>
                     </div>
                   </div>

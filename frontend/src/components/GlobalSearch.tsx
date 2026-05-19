@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, Loader2, Folder, Building2, Star, Package } from 'lucide-react';
 import api from '../services/api';
 import { normalize } from '../utils/marketplace';
+import { useNavigate } from 'react-router-dom';
 
-interface SearchCategoria { id?: number; nombre: string; parent?: unknown; }
+interface SearchCategoria { id?: number; nombre: string; parent?: boolean | number | string | null; }
 interface SearchProveedor { id?: number; nombre: string; tipo_interaccion?: string; }
 interface SearchOferta   { id?: number; nombre: string; proveedor_nombre?: string; precio_dq?: number | string; }
 interface SearchProducto  { id?: number; nombre: string; marca?: string; supplier_count?: number; min_price?: string | number; }
@@ -25,6 +26,7 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onSelectResult }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const wrapperRef = useRef<HTMLDivElement>(null);
+    const navigate = useNavigate();
 
     // Click-Outside Hook
     useEffect(() => {
@@ -86,9 +88,9 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onSelectResult }) => {
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && query.trim() !== '') {
             setIsOpen(false);
-            // Optionally dispatch a global search action or navigation
+            navigate(`/buscar?q=${encodeURIComponent(query.trim())}`);
         }
     };
 
@@ -97,6 +99,16 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onSelectResult }) => {
         results.proveedores?.length === 0 && 
         results.ofertas_destacadas?.length === 0 &&
         results.productos?.length === 0;
+
+    useEffect(() => {
+        if (hasNoResults && !isLoading && isOpen) {
+            const timer = setTimeout(() => {
+                setIsOpen(false);
+                navigate(`/buscar?q=${encodeURIComponent(query.trim())}`);
+            }, 800);
+            return () => clearTimeout(timer);
+        }
+    }, [hasNoResults, isLoading, isOpen, query, navigate]);
 
     return (
         <div ref={wrapperRef} className="relative w-full max-w-4xl mx-auto">
@@ -129,9 +141,10 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onSelectResult }) => {
                             <span className="ml-2 text-sm font-medium tracking-tight">Buscando resultados...</span>
                         </div>
                     ) : hasNoResults ? (
-                        /* Empty State */
-                        <div className="p-8 text-center text-slate-500 font-medium text-sm">
-                            No se encontraron resultados para "{query}"
+                        /* Empty State - Auto Redirect */
+                        <div className="p-8 text-center text-slate-500 flex flex-col items-center gap-4">
+                            <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+                            <span className="font-medium text-sm">Iniciando búsqueda profunda con Inteligencia Artificial...</span>
                         </div>
                     ) : results && (
                         /* Populated State */
@@ -242,14 +255,6 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onSelectResult }) => {
                                                     <span>{producto.supplier_count ?? 0} {(producto.supplier_count ?? 0) === 1 ? 'proveedor' : 'proveedores'}</span>
                                                 </div>
                                             </div>
-                                            {producto.min_price && (
-                                                <div className="flex-shrink-0 text-right">
-                                                    <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">desde</div>
-                                                    <div className="font-bold text-sm text-slate-900 tabular-nums">
-                                                        {parseFloat(producto.min_price).toFixed(2)}€
-                                                    </div>
-                                                </div>
-                                            )}
                                         </div>
                                     ))}
                                 </div>

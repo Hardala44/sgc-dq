@@ -21,12 +21,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-@bh!x+#_o%ot$-by7!b(d6_0j+v(3$g2=cospxxi^iz$%6a8qe'
+SECRET_KEY = os.environ.get(
+    'DJANGO_SECRET_KEY',
+    'django-insecure-@bh!x+#_o%ot$-by7!b(d6_0j+v(3$g2=cospxxi^iz$%6a8qe'  # dev fallback only
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'host.docker.internal']
+_allowed_hosts_env = os.environ.get('DJANGO_ALLOWED_HOSTS', '')
+ALLOWED_HOSTS = (
+    [h.strip() for h in _allowed_hosts_env.split(',') if h.strip()]
+    if _allowed_hosts_env
+    else ['localhost', '127.0.0.1', 'host.docker.internal']
+)
 
 
 # Application definition
@@ -138,6 +146,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -156,19 +165,28 @@ REST_FRAMEWORK = {
     ),
 }
 
-CORS_ALLOW_ALL_ORIGINS = True
+_cors_origins_env = os.environ.get('CORS_ALLOWED_ORIGINS', '')
+if _cors_origins_env:
+    CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_origins_env.split(',') if o.strip()]
+    CORS_ALLOW_ALL_ORIGINS = False
+else:
+    # Development fallback — allow all
+    CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
-
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:3000",
-#     "http://127.0.0.1:3000",
-#     "http://localhost:5173",
-#     "http://127.0.0.1:5173",
-# ]
 
 SIMPLE_JWT = {
     'SIGNING_KEY': SECRET_KEY,
 }
+
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@dentalq.es')
+PURCHASE_REQUEST_NOTIFICATION_EMAIL = os.environ.get('PURCHASE_REQUEST_NOTIFICATION_EMAIL', 'info@dentalq.es')
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'localhost')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '25'))
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'false').lower() == 'true'
+EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'false').lower() == 'true'
 
 
 # ─── Ingestion API Security ────────────────────────────────────────────────────
@@ -178,6 +196,12 @@ INGESTION_API_KEY = os.environ.get(
     'INGESTION_API_KEY',
     'dq-ingesta-dev-key-change-me-in-production'
 )
+
+# ─── AI Enrichment (Gemini Flash) ─────────────────────────────────────────────
+# Set via environment: export GEMINI_API_KEY="your-key"
+# If absent, smart-search falls back to heuristic enrichment (no error).
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+
 
 
 # ─── Logging ──────────────────────────────────────────────────────────────────

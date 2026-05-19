@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import api from '../services/api';
+import SolicitudPresupuestoCard from './SolicitudPresupuestoCard';
 
 interface LeadRequestModalProps {
   isOpen: boolean;
@@ -15,6 +16,23 @@ const LeadRequestModal: React.FC<LeadRequestModalProps> = ({ isOpen, onClose, pr
   const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
+
+  // Si no hay proveedor, actuamos como el modal de presupuesto genérico
+  if (!proveedor) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 overflow-y-auto">
+        <div className="relative w-full max-w-2xl my-8">
+            <button 
+                onClick={onClose} 
+                className="absolute right-4 top-4 text-slate-500 hover:text-slate-900 bg-white/95 hover:bg-white rounded-full p-2 transition-all z-10 shadow-sm border border-slate-200"
+            >
+                <X size={24} />
+            </button>
+            <SolicitudPresupuestoCard onCloseModal={onClose} isModal={true} />
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -98,3 +98,38 @@ class PremioDetailView(APIView):
             return Response({'detail': 'Premio no encontrado.'}, status=404)
         p.delete()
         return Response(status=204)
+
+class LoyaltyProgressView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if _is_admin(request.user):
+            puntos_acumulados = 0
+        else:
+            clinic = getattr(request.user, 'clinica', None)
+            if not clinic:
+                return Response({'puntos': 0, 'progress': 0, 'proximo_premio': None})
+            
+            puntos_obj, _ = Puntos.objects.get_or_create(clinica=clinic)
+            puntos_acumulados = puntos_obj.puntos_acumulados
+
+        premios = Premio.objects.filter(activo=True).order_by('coste_puntos')
+        proximo_premio = None
+        for p in premios:
+            if p.coste_puntos > puntos_acumulados:
+                proximo_premio = p
+                break
+
+        if proximo_premio:
+            progress = min(100, int((puntos_acumulados / proximo_premio.coste_puntos) * 100))
+            proximo_nombre = proximo_premio.nombre
+        else:
+            progress = 100
+            proximo_nombre = "Todos los premios desbloqueados"
+
+        return Response({
+            'puntos': puntos_acumulados,
+            'progress': progress,
+            'proximo_premio': proximo_nombre
+        })
+

@@ -16,8 +16,18 @@ api.interceptors.request.use(
         if (config.data instanceof FormData) {
             delete config.headers['Content-Type'];
         }
-        const activeClinicId = sessionStorage.getItem('dq_active_clinic');
-        if (activeClinicId) {
+        const storedClinic = sessionStorage.getItem('dq_active_clinic');
+        if (storedClinic) {
+            let activeClinicId = storedClinic;
+            try {
+                const parsedClinic = JSON.parse(storedClinic) as { id?: string | number };
+                if (parsedClinic?.id !== undefined && parsedClinic?.id !== null) {
+                    activeClinicId = String(parsedClinic.id);
+                }
+            } catch {
+                activeClinicId = storedClinic;
+            }
+
             config.headers['X-Clinic-Id'] = activeClinicId;
         }
         return config;

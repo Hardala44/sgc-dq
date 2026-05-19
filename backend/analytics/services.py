@@ -244,14 +244,11 @@ class AnalyticsService:
             if prov:
                 ahorro_estimado = prov.ahorro_estimado or Decimal('0.00')
                 desc_dq = prov.descuento_dq or Decimal('0.00')
-                if desc_dq > Decimal('0.00'):
+                if desc_dq > Decimal('0.00') and desc_dq < Decimal('1.00'):
                     divisor = Decimal('1.00') - desc_dq
                     ahorro_linea = gasto.amount * (ahorro_estimado / divisor)
                 else:
                     ahorro_linea = gasto.amount * ahorro_estimado
-
-            if ahorro_linea == Decimal('0.00') and gasto.ahorro_aprox and gasto.ahorro_aprox > Decimal('0.00'):
-                ahorro_linea = gasto.ahorro_aprox
 
             total_savings += ahorro_linea
 
@@ -309,8 +306,16 @@ class AnalyticsService:
         )
         current_year_gastos = all_gastos.filter(year=current_year)
 
+        # ── Facturación total (sum of Gasto.amount) ─────────────────────────────
+        facturacion_total = all_gastos.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        facturacion_current_year = current_year_gastos.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+
         lifetime_savings, savings_by_category, savings_by_provider = AnalyticsService._calculate_dynamic_savings(all_gastos)
         current_year_savings, _, _ = AnalyticsService._calculate_dynamic_savings(current_year_gastos)
+
+        last_full_year = current_year - 1
+        last_full_year_gastos = all_gastos.filter(year=last_full_year)
+        last_full_year_savings, last_full_year_categories, _ = AnalyticsService._calculate_dynamic_savings(last_full_year_gastos)
 
         compliance_rows = []
         categories = ExpenseCategory.objects.exclude(_noise_q_category()).order_by('nombre')
@@ -364,9 +369,17 @@ class AnalyticsService:
                 "quarter": current_quarter,
                 "label": f"Q{current_quarter} {current_year}",
             },
+            "facturacion_total": float(facturacion_total),
+            "facturacion_current_year": float(facturacion_current_year),
             "savings": {
                 "lifetime_total": lifetime_savings,
                 "current_year_total": current_year_savings,
+                "last_full_year_total": last_full_year_savings,
+                "last_full_year": {
+                    "year": last_full_year,
+                    "total": last_full_year_savings,
+                    "by_category": last_full_year_categories,
+                },
                 "by_category": savings_by_category,
                 "by_provider": savings_by_provider,
             },
@@ -597,68 +610,84 @@ class AnalyticsService:
             total_current_spend += current_spend
             total_prev_spend += previous_spend
 
-        # ── Dynamic Ahorro Total (formula-based) ─────────────────────────────
-        current_gastos_qs = (
+        # ── Dynamic Ahorro Total — DB-level aggregation by provider ──────────────
+        # Group gastos by provider, compute savings using proveedor.ahorro_estimado.
+        # This means changing proveedor.ahorro_estimado in the Admin instantly
+        # updates all dashboards on next request.
+        provider_billing = (
             Gasto.objects
             .filter(clinic=clinic)
             .filter(current_q_filter)
             .exclude(_noise_q_gasto())
-            .select_related('proveedor')
+            .filter(proveedor__isnull=False)
+            .values(
+                'proveedor__id',
+                'proveedor__nombre',
+                'proveedor__ahorro_estimado',
+                'proveedor__descuento_dq',
+            )
+            .annotate(total_amount=Sum('amount'))
         )
 
         ahorro_por_proveedor_dict = {}
         total_ahorro_dynamic = Decimal('0.00')
 
-        smart_insights = []
+        for row in provider_billing:
+            ae = row['proveedor__ahorro_estimado'] or Decimal('0.00')
+            dd = row['proveedor__descuento_dq'] or Decimal('0.00')
+            vol = row['total_amount'] or Decimal('0.00')
 
-        for gasto in current_gastos_qs:
-            prov = gasto.proveedor
-            
-            if prov:
-                ahorro_estimado = prov.ahorro_estimado or Decimal('0.00')
-                desc_dq = prov.descuento_dq or Decimal('0.00')
-
-                if desc_dq > Decimal('0.00'):
-                    divisor = Decimal('1.00') - desc_dq
-                    ahorro_linea = gasto.amount * (ahorro_estimado / divisor)
-                else:
-                    ahorro_linea = gasto.amount * ahorro_estimado
+            # Formula: importe × (ahorro_estimado / (1 − descuento_dq))
+            # descuento_dq is stored as a 0–1 ratio (e.g. 0.08 = 8%)
+            if Decimal('0') < dd < Decimal('1'):
+                divisor = Decimal('1') - dd
+                ahorro_linea = vol * (ae / divisor)
             else:
-                ahorro_linea = Decimal('0.00')
-
-            # We don't add ahorro_aprox from the file directly anymore if we're doing the dynamic calc,
-            # but we can fallback if calculated is 0:
-            if ahorro_linea == Decimal('0.00') and gasto.ahorro_aprox and gasto.ahorro_aprox > Decimal('0.00'):
-                ahorro_linea = gasto.ahorro_aprox
+                ahorro_linea = vol * ae
 
             total_ahorro_dynamic += ahorro_linea
 
-            prov_name = prov.nombre if prov else 'Desconocido'
-            if prov_name not in ahorro_por_proveedor_dict:
-                diferencial = float(ahorro_estimado * Decimal('100.00')) if prov else 0.0
-                ahorro_por_proveedor_dict[prov_name] = {
-                    "proveedor_nombre": prov_name,
-                    "nombre_proveedor": prov_name,  # explicit alias for frontend
-                    "compras": Decimal('0.00'),
-                    "diferencial": diferencial,
-                    "ahorro": Decimal('0.00'),
+            prov_key = row['proveedor__id']
+            prov_nombre = row['proveedor__nombre'] or 'Desconocido'
+            if prov_key not in ahorro_por_proveedor_dict:
+                ahorro_por_proveedor_dict[prov_key] = {
+                    'proveedor_nombre': prov_nombre,
+                    'nombre_proveedor': prov_nombre,
+                    'compras': Decimal('0.00'),
+                    'valor': Decimal('0.00'),
+                    'diferencial': float(ae * Decimal('100')),
+                    'ahorro': Decimal('0.00'),
                 }
-            ahorro_por_proveedor_dict[prov_name]["compras"] += gasto.amount
-            ahorro_por_proveedor_dict[prov_name]["ahorro"] += ahorro_linea
+            ahorro_por_proveedor_dict[prov_key]['compras'] += vol
+            ahorro_por_proveedor_dict[prov_key]['valor'] += vol
+            ahorro_por_proveedor_dict[prov_key]['ahorro'] += ahorro_linea
+
+        # Also add ahorro_aprox from gastos without a linked provider (or provider has no rate)
+        unlinked_ahorro = (
+            Gasto.objects
+            .filter(clinic=clinic)
+            .filter(current_q_filter)
+            .exclude(_noise_q_gasto())
+            .filter(proveedor__isnull=True)
+            .aggregate(total=Sum('ahorro_aprox'))
+        )['total'] or Decimal('0.00')
+        total_ahorro_dynamic += unlinked_ahorro
 
         total_savings = float(total_ahorro_dynamic)
 
         ahorro_por_proveedor = []
         for prop in ahorro_por_proveedor_dict.values():
-            compras_float = float(prop["compras"])
-            ahorro_float = float(prop["ahorro"])
-            prop["compras"] = compras_float
-            prop["valor"] = compras_float  # explicit alias for frontend pie chart
-            prop["ahorro"] = ahorro_float
-            ahorro_por_proveedor.append(prop)
+            ahorro_por_proveedor.append({
+                'proveedor_nombre': prop['proveedor_nombre'],
+                'nombre_proveedor': prop['nombre_proveedor'],
+                'compras': float(prop['compras']),
+                'valor': float(prop['valor']),
+                'diferencial': prop['diferencial'],
+                'ahorro': float(prop['ahorro']),
+            })
 
-        # Sort by spend descending so the pie chart shows top providers first
-        ahorro_por_proveedor.sort(key=lambda x: x["valor"], reverse=True)
+        # Sort by billing volume descending (pie chart shows top providers first)
+        ahorro_por_proveedor.sort(key=lambda x: x['valor'], reverse=True)
 
         # ── Ahorro Potencial (leakage on generic spend) ──────────────────────
         generic_gastos_sum = (
@@ -700,10 +729,9 @@ class AnalyticsService:
             ahorro_potencial_por_box = None
 
         # ── Optimization Alerts (Compliance by Category) ───────────────────────
-        # For each category, check if the clinic spends significantly less than
-        # the sector average. Zero or near-zero spend in a category means the
-        # clinic is likely buying outside DQ group agreements.
         SECTOR_LOW_THRESHOLD = Decimal('0.20')  # below 20% of sector avg → alert
+
+        smart_insights = []  # initialised here; populated in the loop below
 
         for cat in categories:
             cat_spend = (
@@ -752,11 +780,22 @@ class AnalyticsService:
                     "title": "Potencial No Aprovechado",
                     "description": msg,
                     "type": "warning",
-                    "impact_value": float(potential_saving)
+                    "impact_value": float(potential_saving),
+                    "category_name": cat.nombre,
+                    "category_id": cat.id,
                 })
 
-        # ── Proveedores activos ───────────────────────────────────────────────
-        proveedores_activos = Pedido.objects.filter(clinica=clinic).values('proveedor').distinct().count()
+        # ── Proveedores activos (from Gasto instead of Pedido) ───────────────────
+        proveedores_activos = (
+            Gasto.objects
+            .filter(clinic=clinic)
+            .filter(current_q_filter)
+            .exclude(_noise_q_gasto())
+            .filter(proveedor__isnull=False)
+            .values('proveedor')
+            .distinct()
+            .count()
+        )
 
         puntos_elite = getattr(clinic, 'puntos_elite', 0) if hasattr(clinic, 'puntos_elite') else 0
 

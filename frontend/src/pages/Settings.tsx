@@ -3,8 +3,8 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import {
-    Loader2, Building2, Wrench, CreditCard, Users, Bell,
-    ChevronRight, Construction, Shield, Eye, EyeOff, Check, Settings as SettingsIcon, Store
+    Loader2, CreditCard, Users, Bell,
+    Construction, Shield, Eye, EyeOff, Check, Settings as SettingsIcon, Store
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────

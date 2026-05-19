@@ -9,15 +9,18 @@ from django_filters.rest_framework import DjangoFilterBackend
 import logging
 import hmac
 from django.conf import settings
+from django.core.mail import send_mail
 
 from .models import (
     Categoria, Proveedor, ProductoLegado, Oferta,
     ProductoEstrella, LeadSolicitud, Producto, ProveedorOferta,
+    PeticionPresupuesto, OfertaDestacada,
 )
 from .serializers import (
     CategoriaSerializer, ProveedorSerializer, ProductoSerializer,
     OfertaSerializer, ProductoEstrellaSerializer, LeadSolicitudSerializer,
     ProductoMarketplaceSerializer, ProveedorOfertaSerializer,
+    PeticionPresupuestoSerializer, OfertaDestacadaSerializer,
 )
 
 # Dedicated logger — writes to console + ingestion.log (see settings.py LOGGING)
@@ -547,3 +550,397 @@ class SmartSearchView(APIView):
                 productos_qs, many=True, context={'request': request}
             ).data,
         })
+
+class PeticionPresupuestoViewSet(ModelViewSet):
+    queryset = PeticionPresupuesto.objects.select_related('clinica', 'usuario').order_by('-fecha_creacion')
+    serializer_class = PeticionPresupuestoSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_authenticated and (user.is_staff or getattr(user, 'rol', '') == 'admin_dq'):
+            return self.queryset
+        if user.is_authenticated:
+            return self.queryset.filter(clinica=user.clinica)
+        return self.queryset.none()
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        peticion = serializer.save(usuario=user, clinica=user.clinica)
+
+        # Enviar email
+        asunto = f"Nueva Petición de Presupuesto - {user.clinica.nombre}"
+        cuerpo = f"""
+Se ha recibido una nueva petición de presupuesto:
+
+Clínica: {user.clinica.nombre}
+Usuario: {user.get_full_name() or user.email}
+Producto valorado: {peticion.producto_valorado}
+Marca de referencia: {peticion.marca_referencia}
+Plazo de entrega: {peticion.plazo_entrega}
+Forma de pago: {peticion.forma_pago}
+Precio de referencia: {peticion.precio_referencia}
+"""
+        try:
+            send_mail(
+                subject=asunto,
+                message=cuerpo,
+                from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@dentalq.es'),
+                recipient_list=[getattr(settings, 'PURCHASE_REQUEST_NOTIFICATION_EMAIL', 'info@dentalq.es')],
+                fail_silently=False,
+            )
+        except Exception as e:
+            ingestion_log.error(f"Error enviando email de petición de presupuesto: {e}")
+
+
+# ─── Ofertas Destacadas ──────────────────────────────────────────────────────
+
+class OfertaDestacadaViewSet(ModelViewSet):
+    serializer_class = OfertaDestacadaSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_authenticated and (user.is_staff or getattr(user, 'rol', '') == 'admin_dq'):
+            return OfertaDestacada.objects.all()
+        return OfertaDestacada.objects.filter(activa=True)
+
+    def get_permissions(self):
+        if self.action in ('list', 'retrieve'):
+            return [IsAuthenticated()]
+        # Only admins can create/update/delete
+        from rest_framework.permissions import BasePermission
+
+        class IsAdminOrDQ(BasePermission):
+            def has_permission(self, request, view):
+                return request.user.is_authenticated and (
+                    request.user.is_staff or getattr(request.user, 'rol', '') == 'admin_dq'
+                )
+
+        return [IsAdminOrDQ()]
+
+
+# ─── AI-Powered Smart Search V2 ──────────────────────────────────────────────
+
+class SmartSearchV2View(APIView):
+    """
+    GET /api/compras/smart-search/?q=<query>
+
+    Upgraded search endpoint:
+    1. Enriches query with Gemini Flash (related_terms, scraper_terms, category, providers)
+    2. Searches DB using original + enriched terms
+    3. Returns local results immediately
+    4. If local results == 0: sets is_searching_live=True and returns session_id
+       so frontend can immediately start polling the live scraper
+    5. If local results > 0: still returns ai_meta for display — does NOT block
+       the user from seeing results (correction #4)
+
+    Response shape:
+    {
+        "productos": [...],          # Local DB results (may be empty)
+        "is_searching_live": bool,   # true when 0 local results found
+        "session_id": "abc123",      # set when is_searching_live=true
+        "ai_meta": {
+            "ai_enriched": bool,
+            "related_terms": [...],
+            "scraper_terms": [...],
+            "categoria_sugerida": "...",
+            "proveedores_sugeridos": [...],
+            "contexto": "..."
+        }
+    }
+    """
+
+    def get(self, request):
+        from django.db.models import Case, When, Value, IntegerField
+        from compras.services.marketplace_search_service import enrich_query
+        try:
+            from compras.services import live_search_manager as _lsm
+        except ImportError as _e:
+            ingestion_log.warning("live_search_manager unavailable: %s", _e)
+            _lsm = None  # type: ignore[assignment]
+
+        query = request.query_params.get('q', '').strip()
+        if not query:
+            return Response({
+                "productos": [],
+                "is_searching_live": False,
+                "session_id": None,
+                "ai_meta": {},
+            })
+
+        # ── Step A: AI Enrichment (non-blocking — falls back to heuristics) ──
+        enrichment = enrich_query(query)
+
+        ai_meta = {
+            "ai_enriched": enrichment.ai_enriched,
+            "related_terms": enrichment.related_terms,
+            "scraper_terms": enrichment.scraper_terms,
+            "categoria_sugerida": enrichment.categoria_nombre,
+            "proveedores_sugeridos": enrichment.proveedores_sugeridos,
+            "contexto": enrichment.ai_context,
+        }
+
+        # ── Step B: Token helpers ─────────────────────────────────────────────
+        def singular(t):
+            t_low = t.lower()
+            if len(t_low) > 4 and t_low.endswith('es'):
+                return t_low[:-2]
+            elif len(t_low) > 3 and t_low.endswith('s'):
+                return t_low[:-1]
+            return t_low
+
+        # ── Step C: DB Search — two-pass for precision ────────────────────────
+        # Pass 1: original query tokens ONLY (avoids generic term bleed)
+        orig_tokens = [t.strip() for t in query.split() if len(t.strip()) > 1]
+        orig_bases = [singular(t) for t in orig_tokens]
+
+        brand_match = Q()
+        exact_match = Q(nombre__icontains=query) | Q(linea_producto__icontains=query)
+        pass1_filter = Q()
+        for original, base in zip(orig_tokens, orig_bases):
+            pass1_filter |= (
+                Q(nombre__icontains=original) | Q(nombre__icontains=base) |
+                Q(linea_producto__icontains=original) | Q(linea_producto__icontains=base) |
+                Q(marca__icontains=original) | Q(marca__icontains=base) |
+                Q(descripcion__icontains=original) | Q(descripcion__icontains=base)
+            )
+            brand_match |= Q(marca__icontains=original) | Q(marca__icontains=base)
+
+        base_qs = Producto.objects.filter(activo=True)
+        first_pass_qs = base_qs.filter(pass1_filter)
+
+        if first_pass_qs.exists():
+            # Found with the original query — use these results only
+            productos_qs = first_pass_qs
+        else:
+            # Pass 2: try each related_term as a FULL PHRASE (not split into words)
+            # This prevents generic tokens like "dental" from matching everything
+            phrase_filter = Q()
+            for phrase in enrichment.related_terms:
+                phrase = phrase.strip()
+                if len(phrase) > 2:
+                    phrase_filter |= (
+                        Q(nombre__icontains=phrase) |
+                        Q(linea_producto__icontains=phrase) |
+                        Q(descripcion__icontains=phrase)
+                    )
+            if phrase_filter != Q():
+                productos_qs = base_qs.filter(phrase_filter)
+                # Also update brand/exact match signals for ranking
+                for phrase in enrichment.related_terms:
+                    brand_match |= Q(marca__icontains=phrase)
+            else:
+                productos_qs = base_qs.none()
+
+        productos_qs = (
+            productos_qs
+            .annotate(
+                rank_score=Case(
+                    When(brand_match, then=Value(30)),
+                    When(exact_match, then=Value(20)),
+                    default=Value(0),
+                    output_field=IntegerField(),
+                )
+            )
+            .prefetch_related('ofertas__proveedor')
+            .annotate(supplier_count=Count('ofertas__proveedor', distinct=True))
+            .order_by('-rank_score', 'nombre')
+        )
+
+        local_products = list(productos_qs)
+        serialized_products = ProductoMarketplaceSerializer(
+            local_products, many=True, context={'request': request}
+        ).data
+
+        # ── Step D: Live Search trigger ───────────────────────────────────────
+        is_searching_live = len(local_products) == 0
+        session_id = None
+
+        if is_searching_live:
+            if _lsm is not None:
+                session_id = _lsm.start_session(
+                    query=query,
+                    scraper_terms=enrichment.scraper_terms,
+                    providers=enrichment.proveedores_sugeridos,
+                )
+            else:
+                is_searching_live = False
+            ingestion_log.info(
+                "SmartSearchV2 '%s': 0 local results, live search started session=%s",
+                query, session_id,
+            )
+        else:
+            ingestion_log.info(
+                "SmartSearchV2 '%s': %d local results (ai_enriched=%s)",
+                query, len(local_products), enrichment.ai_enriched,
+            )
+
+        return Response({
+            "productos": serialized_products,
+            "is_searching_live": is_searching_live,
+            "session_id": session_id,
+            "ai_meta": ai_meta,
+        })
+
+
+class LiveSearchStartView(APIView):
+    """
+    POST /api/compras/live-search/
+    Body: { "query": "...", "scraper_terms": [...], "providers": [...], "session_id": "optional" }
+
+    Starts a background live-scrape session explicitly.
+    Use this to (re)trigger live search from the frontend.
+    """
+
+    def post(self, request):
+        from compras.services import live_search_manager
+
+        query = (request.data.get('query') or '').strip()
+        if not query:
+            return Response({'error': 'query is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        scraper_terms = request.data.get('scraper_terms') or []
+        providers = request.data.get('providers') or []
+        custom_session_id = request.data.get('session_id')
+
+        session_id = live_search_manager.start_session(
+            query=query,
+            scraper_terms=scraper_terms,
+            providers=providers,
+            session_id=custom_session_id or None,
+        )
+
+        ingestion_log.info("LiveSearchStart: query='%s' session=%s", query, session_id)
+        return Response({
+            'status': 'started',
+            'session_id': session_id,
+        })
+
+
+class LiveSearchStatusView(APIView):
+    """
+    GET /api/compras/live-search-status/?session_id=<id>
+
+    Poll the status of a live scrape session.
+    Returns results hydrated with DQ pricing (correction #2).
+
+    Response shapes:
+        { "status": "pending", ... }        -> still scraping
+        { "status": "done", "results": [...], "providers_searched": [...] }
+        { "status": "error", "error": "..." }
+        { "status": "not_found" }           -> expired or wrong ID
+    """
+
+    def get(self, request):
+        from compras.services import live_search_manager
+
+        session_id = request.query_params.get('session_id', '').strip()
+        if not session_id:
+            return Response({'error': 'session_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        result = live_search_manager.get_status(session_id)
+        return Response(result)
+
+
+class PersistLiveProductView(APIView):
+    """
+    POST /api/compras/persist-live-product/
+
+    Saves a live-scraped product into the DB permanently.
+    This is called when a user clicks on a live result, so future searches
+    will find it in the local DB (auto-learning catalog).
+
+    Body:
+    {
+        "linea_producto": "Babero Dental Desechable",
+        "marca": "Proclinic",
+        "proveedor_nombre": "Proclinic",
+        "categoria_name": "Depósitos y Aparatología",
+        "url_compra": "https://...",
+        "precio_web": 12.50,
+        "precio_dq": 11.00
+    }
+
+    Response:
+    {
+        "producto_id": 42,
+        "was_created": true,
+        "oferta_id": 88
+    }
+    """
+
+    def post(self, request):
+        from compras.services.marketplace_search_service import _resolve_to_db_category
+
+        data = request.data
+        nombre = (data.get('linea_producto') or data.get('nombre') or '').strip()
+        if not nombre:
+            return Response({'error': 'linea_producto is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        marca = (data.get('marca') or '').strip()
+
+        # Resolve category strictly to DB (correction #1)
+        raw_cat = (data.get('categoria_name') or '').strip()
+        categoria_nombre = _resolve_to_db_category(raw_cat)
+
+        try:
+            categoria = Categoria.objects.filter(nombre__iexact=categoria_nombre).first()
+            if not categoria:
+                # Last resort: first category in DB
+                categoria = Categoria.objects.first()
+
+            # Resolve supplier
+            proveedor_nombre = (data.get('proveedor_nombre') or '').strip()
+            proveedor = None
+            if proveedor_nombre:
+                proveedor = Proveedor.objects.filter(nombre__iexact=proveedor_nombre, activo=True).first()
+                if not proveedor:
+                    proveedor = Proveedor.objects.filter(
+                        nombre__icontains=proveedor_nombre.split()[0] if proveedor_nombre else '',
+                        activo=True
+                    ).first()
+
+            # Create or update Producto
+            producto, was_created = Producto.objects.get_or_create(
+                nombre=nombre,
+                marca=marca,
+                defaults={
+                    'categoria': categoria,
+                    'linea_producto': nombre,
+                    'descripcion': f'Producto encontrado via búsqueda en vivo en {proveedor_nombre}',
+                    'activo': True,
+                },
+            )
+
+            response_data = {
+                'producto_id': producto.id,
+                'was_created': was_created,
+                'oferta_id': None,
+            }
+
+            # Create ProveedorOferta if we have a supplier
+            if proveedor:
+                url_compra = (data.get('url_compra') or '').strip()
+                pseudo_sku = f"DQ-LIVE-{proveedor.id}-{producto.id}"
+                oferta, _ = ProveedorOferta.objects.update_or_create(
+                    proveedor=proveedor,
+                    producto=producto,
+                    defaults={
+                        'sku': pseudo_sku,
+                        'precio': 0,
+                        'url_compra': url_compra,
+                        'stock_status': 'in_stock',
+                    },
+                )
+                response_data['oferta_id'] = oferta.id
+
+            ingestion_log.info(
+                "PersistLiveProduct: %s '%s [%s]' cat=%s prov=%s created=%s",
+                'CREATED' if was_created else 'FOUND',
+                nombre, marca, categoria_nombre, proveedor_nombre, was_created,
+            )
+
+            return Response(response_data, status=status.HTTP_201_CREATED if was_created else status.HTTP_200_OK)
+
+        except Exception as exc:
+            ingestion_log.exception("PersistLiveProduct error: %s", exc)
+            return Response({'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

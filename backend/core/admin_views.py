@@ -1,10 +1,13 @@
 import secrets
 import string
+from decimal import Decimal
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from django.contrib.auth import get_user_model
-from core.models import Clinica
+from django.db.models import Sum, Count, Q
+from django.db.models.functions import Coalesce
+from core.models import Clinica, ClinicLegalEntity, Gasto
 
 User = get_user_model()
 
@@ -253,3 +256,244 @@ class AdminResetPasswordView(APIView):
             "temp_password": temp_password,   # displayed once to admin
             "username": u.username,
         })
+
+
+# ─── /api/core/admin/global-stats/ ───────────────────────────────────────────
+
+class AdminGlobalStatsView(APIView):
+    """
+    Aggregate stats for the whole group — billing, savings, top providers, clinic list.
+    Accessible only to admin_dq / superusers.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        err = _require_admin(request.user)
+        if err:
+            return err
+
+        User = get_user_model()
+
+        # ── Total billing from Gasto.amount (real data source) ─────────────────
+        total_facturacion = Gasto.objects.aggregate(
+            total=Coalesce(Sum('amount'), Decimal('0'))
+        )['total']
+
+        # ── Dynamic total savings: Gasto × Proveedor.ahorro_estimado ──────────
+        # Group by provider savings rate and multiply by billing volume
+        provs_with_savings = (
+            Gasto.objects
+            .filter(proveedor__isnull=False, proveedor__ahorro_estimado__gt=0)
+            .values('proveedor__ahorro_estimado', 'proveedor__descuento_dq')
+            .annotate(vol=Coalesce(Sum('amount'), Decimal('0')))
+        )
+        total_ahorro = Decimal('0')
+        for row in provs_with_savings:
+            ae = row['proveedor__ahorro_estimado'] or Decimal('0')
+            dd = row['proveedor__descuento_dq'] or Decimal('0')
+            vol = row['vol']
+            if Decimal('0') < dd <= Decimal('1'):
+                divisor = Decimal('1') - dd
+                total_ahorro += vol * (ae / divisor)
+            else:
+                total_ahorro += vol * ae
+        # Fallback to static ahorro_aprox for providers without ahorro_estimado
+        total_ahorro += Gasto.objects.filter(
+            Q(proveedor__ahorro_estimado__isnull=True) | Q(proveedor__ahorro_estimado=0)
+        ).aggregate(total=Coalesce(Sum('ahorro_aprox'), Decimal('0')))['total']
+
+        # ── Real historical savings from Gasto model (static, for reference) ──
+        ahorro_gastos = float(total_ahorro)  # now uses dynamic formula
+
+        # ── Top 5 providers by billing volume (from Gasto) ─────────────────────
+        top_proveedores = list(
+            Gasto.objects
+            .filter(proveedor__isnull=False)
+            .values('proveedor__id', 'proveedor__nombre')
+            .annotate(
+                volumen=Coalesce(Sum('amount'), Decimal('0')),
+                num_pedidos=Count('id'),
+            )
+            .order_by('-volumen')[:5]
+        )
+
+        # ── Clinic list with user counts ───────────────────────────────────────
+        active_clinics = list(
+            Clinica.objects
+            .filter(activa=True)
+            .values('id', 'nombre', 'num_boxes')
+            .order_by('nombre')
+        )
+        user_counts = {
+            str(row['clinica_id']): row['total']
+            for row in (
+                User.objects
+                .filter(is_active=True)
+                .exclude(clinica__isnull=True)
+                .values('clinica_id')
+                .annotate(total=Count('id'))
+            )
+        }
+
+        return Response({
+            'facturacion_total': float(total_facturacion),
+            'ahorro_total': float(total_ahorro),
+            'ahorro_gastos': ahorro_gastos,
+            'clinicas_activas': len(active_clinics),
+            'top_proveedores': [
+                {
+                    'id': p['proveedor__id'],
+                    'nombre': p['proveedor__nombre'],
+                    'volumen': float(p['volumen']),
+                    'num_pedidos': p['num_pedidos'],
+                }
+                for p in top_proveedores
+            ],
+            'clinicas': [
+                {
+                    'id': str(c['id']),
+                    'nombre': c['nombre'],
+                    'num_boxes': c['num_boxes'],
+                    'num_usuarios': user_counts.get(str(c['id']), 0),
+                }
+                for c in active_clinics
+            ],
+        })
+
+
+# ─── /api/core/admin/clinics/manage/ ─────────────────────────────────────────
+
+class AdminClinicManageView(APIView):
+    """Create or list all clinics (including inactive)."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        err = _require_admin(request.user)
+        if err:
+            return err
+        clinics = Clinica.objects.prefetch_related('legal_entities').order_by('nombre')
+        data = []
+        for c in clinics:
+            le = c.legal_entities.first()
+            data.append({
+                'id': str(c.id),
+                'nombre': c.nombre,
+                'activa': c.activa,
+                'num_boxes': c.num_boxes,
+                'cif': le.cif if le else '',
+                'nombre_fiscal': le.nombre_fiscal if le else '',
+            })
+        return Response(data)
+
+    def post(self, request):
+        err = _require_admin(request.user)
+        if err:
+            return err
+        d = request.data
+        nombre = d.get('nombre', '').strip()
+        if not nombre:
+            return Response({'detail': 'nombre es obligatorio.'}, status=400)
+        clinic = Clinica.objects.create(
+            nombre=nombre,
+            activa=d.get('activa', True),
+            num_boxes=d.get('num_boxes') or None,
+        )
+        cif = d.get('cif', '').strip()
+        if cif:
+            ClinicLegalEntity.objects.create(
+                clinic=clinic,
+                cif=cif,
+                nombre_fiscal=d.get('nombre_fiscal', '').strip(),
+            )
+        return Response({
+            'id': str(clinic.id),
+            'nombre': clinic.nombre,
+            'activa': clinic.activa,
+            'num_boxes': clinic.num_boxes,
+            'cif': cif,
+        }, status=201)
+
+
+class AdminClinicDetailView(APIView):
+    """Update or delete a single clinic."""
+    permission_classes = [IsAuthenticated]
+
+    def _get(self, pk):
+        try:
+            return Clinica.objects.prefetch_related('legal_entities').get(pk=pk)
+        except Clinica.DoesNotExist:
+            return None
+
+    def patch(self, request, pk):
+        err = _require_admin(request.user)
+        if err:
+            return err
+        clinic = self._get(pk)
+        if not clinic:
+            return Response({'detail': 'Clínica no encontrada.'}, status=404)
+        d = request.data
+        if 'nombre' in d:
+            clinic.nombre = d['nombre'].strip()
+        if 'activa' in d:
+            clinic.activa = bool(d['activa'])
+        if 'num_boxes' in d:
+            clinic.num_boxes = d['num_boxes'] or None
+        clinic.save()
+        # Legal entity
+        cif = d.get('cif', '').strip()
+        nombre_fiscal = d.get('nombre_fiscal', '').strip()
+        if cif:
+            le = clinic.legal_entities.first()
+            if le:
+                le.cif = cif
+                le.nombre_fiscal = nombre_fiscal
+                le.save()
+            else:
+                ClinicLegalEntity.objects.create(
+                    clinic=clinic, cif=cif, nombre_fiscal=nombre_fiscal
+                )
+        le = clinic.legal_entities.first()
+        return Response({
+            'id': str(clinic.id),
+            'nombre': clinic.nombre,
+            'activa': clinic.activa,
+            'num_boxes': clinic.num_boxes,
+            'cif': le.cif if le else '',
+            'nombre_fiscal': le.nombre_fiscal if le else '',
+        })
+
+    def delete(self, request, pk):
+        err = _require_admin(request.user)
+        if err:
+            return err
+        clinic = self._get(pk)
+        if not clinic:
+            return Response({'detail': 'Clínica no encontrada.'}, status=404)
+        clinic.delete()
+        return Response(status=204)
+
+
+# ─── /api/core/admin/clinics/coins/ ──────────────────────────────────────────
+
+class AdminClinicCoinsView(APIView):
+    """DQ Coins balance for every clinic — loyalty audit table."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        err = _require_admin(request.user)
+        if err:
+            return err
+        from incentivos.models import Puntos
+        puntos_map = {
+            p.clinica_id: p.puntos_acumulados
+            for p in Puntos.objects.select_related('clinica').all()
+        }
+        clinics = Clinica.objects.filter(activa=True).order_by('nombre')
+        return Response([
+            {
+                'id': str(c.id),
+                'nombre': c.nombre,
+                'puntos_acumulados': puntos_map.get(c.id, 0),
+            }
+            for c in clinics
+        ])

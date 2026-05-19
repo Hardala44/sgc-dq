@@ -44,7 +44,6 @@ const formatPoints = (value: number) => new Intl.NumberFormat('es-ES').format(va
 
 const MisPuntos = () => {
     const [premios, setPremios] = useState<Premio[]>([]);
-    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchPremios = async () => {
@@ -55,8 +54,6 @@ const MisPuntos = () => {
             } catch (error) {
                 console.error("Error fetching premios:", error);
                 toast.error("Error cargando el catálogo de premios.");
-            } finally {
-                setLoading(false);
             }
         };
 

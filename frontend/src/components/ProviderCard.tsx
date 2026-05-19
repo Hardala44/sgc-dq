@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PhoneCall, Mail, Globe, ChevronRight, Package } from 'lucide-react';
+import { PhoneCall, Mail, Globe, Package } from 'lucide-react';
 
 interface ProviderCardProps {
   proveedor: {
@@ -43,7 +43,7 @@ function formatSavings(raw: number | string | null | undefined): string | null {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-const ProviderCard: React.FC<ProviderCardProps> = ({ proveedor, onVerCatalogo }) => {
+const ProviderCard: React.FC<ProviderCardProps> = ({ proveedor }) => {
 
   // ── Logo resolution with 2-level fallback ──────────────────────────────────
   const getDomain = () => {
@@ -82,17 +82,6 @@ const ProviderCard: React.FC<ProviderCardProps> = ({ proveedor, onVerCatalogo })
   const savingsLabel = formatSavings(proveedor.ahorro_estimado);
   const numLineas    = proveedor.num_lineas_producto ?? 0;
   const initial      = proveedor.nombre.charAt(0).toUpperCase();
-
-  // Determine CTA link/action
-  const ctaHref = proveedor.url_catalogo || proveedor.url_web || null;
-
-  const handleCta = () => {
-    if (onVerCatalogo) {
-      onVerCatalogo(proveedor.id);
-    } else if (ctaHref) {
-      window.open(ctaHref, '_blank', 'noopener noreferrer');
-    }
-  };
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -166,40 +155,37 @@ const ProviderCard: React.FC<ProviderCardProps> = ({ proveedor, onVerCatalogo })
           {proveedor.descripcion_larga || 'Proveedor verificado en la Red DentalQuality.'}
         </p>
 
-        {/* Conditions pill */}
+        {/* Conditions List */}
         {proveedor.condiciones_especiales && (
-          <div className="flex justify-center mb-3">
-            <span className="
-              inline-block px-3 py-1.5
-              bg-sky-50 border border-sky-100 text-sky-700
-              text-[10px] font-bold uppercase tracking-wider rounded-full
-              text-center leading-tight
-            ">
-              {proveedor.condiciones_especiales}
-            </span>
+          <div className="mt-4 border-t border-slate-100 pt-3 w-full text-left">
+            <div className="flex flex-col gap-1.5 text-[11px] text-slate-700 font-medium">
+              {proveedor.condiciones_especiales.split('\n').map((line, i) => {
+                const trimmed = line.trim();
+                if (!trimmed) return null;
+                
+                const isBullet = /^[-•*]/.test(trimmed);
+                const cleanText = trimmed.replace(/^[-•*]\s*/, '').trim();
+                
+                if (!cleanText) return null;
+                
+                return (
+                  <div key={i} className={`flex items-start gap-2 ${isBullet ? 'pl-2' : 'mt-1'}`}>
+                    {isBullet && <div className="w-1 h-1 rounded-full bg-slate-400 shrink-0 mt-[5px]" />}
+                    <span className={isBullet ? 'text-slate-600 leading-tight' : 'text-slate-800 font-bold leading-snug'}>
+                      {cleanText}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
 
-      {/* ── Footer / CTA ───────────────────────────────────────────────── */}
+      {/* ── Footer / Contactos ─────────────────────────────────────────── */}
       <div className="px-5 pb-5 pt-3 border-t border-slate-100 mt-auto">
 
-        {/* Primary CTA */}
-        <button
-          onClick={handleCta}
-          className="
-            w-full flex items-center justify-center gap-2
-            py-2.5 rounded-xl
-            bg-klein-600 hover:bg-klein-700 active:scale-[0.98]
-            text-white text-xs font-bold uppercase tracking-widest
-            shadow-sm shadow-klein-200 transition-all duration-200
-          "
-        >
-          Ver Acuerdos
-          <ChevronRight size={13} />
-        </button>
-
-        {/* Secondary contact row */}
+        {/* Contact row */}
         <div className="flex items-center justify-center gap-3 mt-3">
           {proveedor.contacto_telefono && (
             <a

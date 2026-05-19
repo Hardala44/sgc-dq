@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
         !!(localStorage.getItem('access_token') && localStorage.getItem('user'))
     );
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading] = useState(false);
 
     const isAdmin = !!(user?.is_staff || user?.is_superuser || user?.rol === 'admin_dq');
 

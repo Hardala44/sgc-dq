@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid,
     Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
@@ -6,7 +7,7 @@ import {
 } from 'recharts';
 import { useAuth } from '../context/AuthContext';
 import { useClinic } from '../context/ClinicContext';
-import { TrendingUp, DollarSign, Box, AlertTriangle, CheckCircle } from 'lucide-react';
+import { TrendingUp, DollarSign, Box, AlertTriangle, CheckCircle, ShoppingCart, ArrowRight } from 'lucide-react';
 import api from '../services/api';
 import PeriodSelector from '../components/PeriodSelector';
 
@@ -63,6 +64,8 @@ interface DashboardData {
         description: string;
         type: string;
         impact_value?: number;
+        category_name?: string;
+        category_id?: number;
     }>;
 }
 
@@ -70,6 +73,9 @@ interface SmartInsightItem {
     id: string;
     tone: 'positive' | 'warning';
     message: string;
+    category_name?: string;
+    category_id?: number;
+    impact_value?: number;
 }
 
 // Custom tick that wraps long category names into up to 2 lines
@@ -114,6 +120,7 @@ const CustomXAxisTick = ({ x, y, payload }: any) => {
 const DashboardAnalytics = () => {
     const { token } = useAuth();
     const { activeClinicId } = useClinic();
+    const navigate = useNavigate();
     const [period, setPeriod] = useState('');
     const [comparisonMode, setComparisonMode] = useState<'yoy' | 'qoq'>('yoy');
     const [datosKpis, setDatosKpis] = useState<KPI | null>(null);
@@ -155,8 +162,9 @@ const DashboardAnalytics = () => {
         const dynamicInsights: SmartInsightItem[] = backendInsights.map((insight, idx) => ({
             id: `backend-${idx}`,
             tone: insight.type === 'warning' ? 'warning' : 'positive',
-            message: insight.description,
-        }));
+            message: insight.description,            category_name: insight.category_name,
+            category_id: insight.category_id,
+            impact_value: insight.impact_value,        }));
 
         // ── Optimization opportunity value ────────────────────────────────────
         const optimizationValue = datosKpis?.ahorro_potencial && datosKpis.ahorro_potencial > 0
@@ -314,7 +322,8 @@ const DashboardAnalytics = () => {
 
     return (
         <div className="p-6 md:p-8 space-y-6 bg-slate-50 min-h-screen">
-            {/* Header & Controls */}
+
+            {/* ── 1. Header: Period Selector + Comparison Toggle ── */}
             <div className="flex flex-col md:flex-row justify-between items-center bg-white p-5 rounded-xl shadow-sm border border-slate-200">
                 <div>
                     <h1 className="text-xl font-serif font-bold text-slate-900 tracking-tight">Análisis Financiero</h1>
@@ -353,7 +362,7 @@ const DashboardAnalytics = () => {
                 </div>
             </div>
 
-            {/* KPI Cards */}
+            {/* ── 2. KPI Summary Cards ── */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-start justify-between">
                     <div>
@@ -392,48 +401,7 @@ const DashboardAnalytics = () => {
                 </div>
             </div>
 
-            {/* Smart Insights */}
-            <div className="w-full bg-slate-50 border border-blue-100 rounded-xl p-6 mb-6">
-                <div className="flex flex-col md:flex-row gap-6">
-                    <div className="w-full md:w-2/3">
-                        <h3 className="text-lg font-bold text-slate-900 tracking-tight mb-4">Diagnóstico Inteligente</h3>
-                        <div className="space-y-4">
-                            {smartInsights.insights.map((insight) => (
-                                <div key={insight.id} className="flex items-start gap-3">
-                                    <div className={`p-2 rounded-md border ${insight.tone === 'positive'
-                                        ? 'bg-emerald-50 border-emerald-100'
-                                        : 'bg-amber-50 border-amber-100'
-                                        }`}>
-                                        {insight.tone === 'positive' ? (
-                                            <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                                        ) : (
-                                            <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                                        )}
-                                    </div>
-                                    <p className="text-sm text-slate-700 leading-relaxed font-medium">{insight.message}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="w-full md:w-1/3">
-                        <h3 className="text-lg font-bold text-slate-900 tracking-tight mb-4">Oportunidad de Optimización</h3>
-                        <div className="bg-white rounded-lg p-4 shadow-sm border border-rose-100">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Ahorro Potencial no aprovechado</p>
-                            <p className="text-3xl font-bold text-rose-600 tracking-tight mt-2">{formatCurrency(smartInsights.optimizationValue)}</p>
-                            <p className="text-xs text-slate-500 mt-2">{smartInsights.opportunityText}</p>
-                            <button
-                                type="button"
-                                className="mt-4 inline-flex items-center justify-center px-3 py-1.5 rounded-md bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors"
-                            >
-                                Ver alternativas DQ
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Charts */}
+            {/* ── 3. Charts ── */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <div className="xl:col-span-2 bg-white p-5 rounded-xl shadow-sm border border-slate-200">
                     <h3 className="text-lg font-bold text-slate-900 tracking-tight mb-5">Desglose por Categoría</h3>
@@ -460,27 +428,15 @@ const DashboardAnalytics = () => {
                                 />
                                 <RechartsTooltip content={<CustomTooltip />} cursor={{ fill: '#F8FAFC' }} />
                                 <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
-                                <Bar
-                                    dataKey="gasto_anterior"
-                                    name="Periodo Anterior"
-                                    fill="#cbd5e1"
-                                    radius={[4, 4, 0, 0]}
-                                    barSize={22}
-                                />
-                                <Bar
-                                    dataKey="gasto_actual"
-                                    name="Periodo Actual"
-                                    fill="#0f172a"
-                                    radius={[4, 4, 0, 0]}
-                                    barSize={22}
-                                />
+                                <Bar dataKey="gasto_anterior" name="Periodo Anterior" fill="#cbd5e1" radius={[4, 4, 0, 0]} barSize={22} />
+                                <Bar dataKey="gasto_actual" name="Periodo Actual" fill="#0f172a" radius={[4, 4, 0, 0]} barSize={22} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
                 <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                    <h3 className="text-lg font-bold text-slate-900 tracking-tight mb-5">Gasto por Proveedor</h3>
+                    <h3 className="text-lg font-bold text-slate-900 tracking-tight mb-5">Inversión por Proveedor</h3>
                     <div style={{ width: '100%', height: 350 }}>
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -493,24 +449,119 @@ const DashboardAnalytics = () => {
                                     paddingAngle={3}
                                 >
                                     {datosProveedores.filter(p => p.valor > 0).slice(0, 8).map((prov, index) => (
-                                        <Cell
-                                            key={prov.nombre_proveedor}
-                                            fill={providerChartColors[index % providerChartColors.length]}
-                                        />
+                                        <Cell key={prov.nombre_proveedor} fill={providerChartColors[index % providerChartColors.length]} />
                                     ))}
                                 </Pie>
                                 <RechartsTooltip content={<ProviderPieTooltip />} />
-                                <Legend
-                                    formatter={(value) => (
-                                        <span className="text-xs text-slate-600">{value}</span>
-                                    )}
-                                />
+                                <Legend formatter={(value) => <span className="text-xs text-slate-600">{value}</span>} />
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
+                    {/* Provider breakdown table */}
+                    {datosProveedores.filter(p => p.valor > 0).length > 0 && (
+                        <div className="mt-4 overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="bg-slate-50 border-b border-slate-200">
+                                        <th className="text-left px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">Proveedor</th>
+                                        <th className="text-right px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">Facturación</th>
+                                        <th className="text-right px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">Ahorro %</th>
+                                        <th className="text-right px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">Ahorro €</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {datosProveedores.filter(p => p.valor > 0).map(prov => (
+                                        <tr key={prov.nombre_proveedor} className="hover:bg-slate-50">
+                                            <td className="px-3 py-2 font-medium text-slate-800">{prov.nombre_proveedor}</td>
+                                            <td className="px-3 py-2 text-right text-slate-600">{formatCurrency(prov.valor)}</td>
+                                            <td className="px-3 py-2 text-right font-semibold text-emerald-600">{prov.diferencial.toFixed(1)}%</td>
+                                            <td className="px-3 py-2 text-right font-bold text-emerald-700">{formatCurrency(prov.ahorro)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             </div>
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                {/* Header strip */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50">
+                    <div>
+                        <h3 className="text-base font-bold text-slate-900 tracking-tight">Diagnóstico Inteligente</h3>
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mt-0.5">Análisis de cumplimiento y oportunidades de ahorro</p>
+                    </div>
+                    {smartInsights.optimizationValue > 0 && (
+                        <div className="flex items-center gap-2 bg-rose-50 border border-rose-100 rounded-lg px-4 py-2 shrink-0">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-rose-400">Ahorro potencial</span>
+                            <span className="text-lg font-bold text-rose-600 tracking-tight">{formatCurrency(smartInsights.optimizationValue)}</span>
+                        </div>
+                    )}
+                </div>
 
+                <div className="p-6 space-y-3">
+                    {/* Positive insights */}
+                    {smartInsights.insights
+                        .filter(i => i.tone === 'positive')
+                        .map(insight => (
+                            <div key={insight.id} className="flex items-start gap-3 p-3 rounded-lg bg-emerald-50 border border-emerald-100">
+                                <div className="p-1.5 bg-emerald-100 rounded-md shrink-0">
+                                    <CheckCircle className="w-4 h-4 text-emerald-600" />
+                                </div>
+                                <p className="text-sm text-slate-700 leading-relaxed font-medium">{insight.message}</p>
+                            </div>
+                        ))
+                    }
+
+                    {/* Warning / action cards */}
+                    {smartInsights.insights.filter(i => i.tone === 'warning').length > 0 && (
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-4 mb-3 px-1">Potencial de ahorro · actúa ahora</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {smartInsights.insights
+                                    .filter(i => i.tone === 'warning')
+                                    .map(insight => (
+                                        <button
+                                            key={insight.id}
+                                            onClick={() => {
+                                                if (insight.category_id) {
+                                                    navigate(`/catalogo?categoria=${insight.category_id}`);
+                                                } else {
+                                                    navigate('/catalogo');
+                                                }
+                                            }}
+                                            className="group text-left w-full bg-slate-50 hover:bg-slate-900 border border-slate-200 hover:border-slate-900 rounded-xl p-4 cursor-pointer transition-all duration-200 hover:shadow-md"
+                                        >
+                                            <div className="flex items-start justify-between gap-2 mb-2">
+                                                <div className="p-1.5 bg-amber-100 group-hover:bg-amber-300/30 rounded-md shrink-0 transition-colors">
+                                                    <AlertTriangle className="w-4 h-4 text-amber-600 group-hover:text-amber-300 transition-colors" />
+                                                </div>
+                                                <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-white mt-0.5 shrink-0 transition-colors" />
+                                            </div>
+                                            <p className="text-xs text-slate-600 group-hover:text-slate-300 leading-snug mb-3 transition-colors line-clamp-3">
+                                                {insight.message}
+                                            </p>
+                                            <div className="flex items-center gap-1.5">
+                                                <ShoppingCart className="w-3.5 h-3.5 text-blue-500 group-hover:text-blue-300 transition-colors shrink-0" />
+                                                <span className="text-[11px] font-bold text-blue-600 group-hover:text-blue-300 tracking-tight transition-colors">
+                                                    Ver proveedores de {insight.category_name ?? 'esta categoría'} en DQ
+                                                </span>
+                                            </div>
+                                        </button>
+                                    ))
+                                }
+                            </div>
+                        </div>
+                    )}
+
+                    {smartInsights.insights.length === 0 && (
+                        <div className="flex items-center gap-3 p-4 rounded-lg bg-slate-50 border border-slate-100">
+                            <CheckCircle className="w-5 h-5 text-slate-400 shrink-0" />
+                            <p className="text-sm text-slate-500">No hay datos suficientes para generar un diagnóstico en este periodo.</p>
+                        </div>
+                    )}
+                </div>
+            </div>
 
         </div>
     );

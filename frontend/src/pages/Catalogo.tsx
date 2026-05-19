@@ -184,13 +184,13 @@ const Catalogo = () => {
             setSelectedProducto(item as ProductoMarketplace);
         } else if (type === 'proveedor') {
             // Show a search result view with just this provider
-            setSearchQuery(item.nombre);
+            setSearchQuery((item as any).nombre);
             setSearchProveedores([item as Proveedor]);
             setSearchProductos([]);
             setGlobalTab('proveedores');
             setViewMode('search');
         } else if (type === 'oferta') {
-            setSearchQuery(item.proveedor_nombre || 'Oferta');
+            setSearchQuery((item as any).proveedor_nombre || 'Oferta');
             setSearchProveedores([]);
             setSearchProductos([]);
             setGlobalTab('proveedores');

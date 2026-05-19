@@ -234,3 +234,51 @@ class LeadSolicitud(models.Model):
 
     def __str__(self):
         return f"Lead: {self.clinica} -> {self.proveedor}"
+
+class PeticionPresupuesto(models.Model):
+    PLAZO_CHOICES = (
+        ('Urgente', 'Urgente'),
+        ('Lo antes posible', 'Lo antes posible'),
+        ('No es importante', 'No es importante'),
+    )
+    PAGO_CHOICES = (
+        ('Contado', 'Contado'),
+        ('Financiación/Renting/Leasing', 'Financiación/Renting/Leasing'),
+        ('Indiferente', 'Indiferente'),
+    )
+    ESTADO_CHOICES = (
+        ('Pendiente', 'Pendiente'),
+        ('En Gestión', 'En Gestión'),
+        ('Finalizado', 'Finalizado'),
+    )
+
+    clinica = models.ForeignKey(Clinica, on_delete=models.CASCADE)
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    producto_valorado = models.CharField(max_length=255)
+    marca_referencia = models.CharField(max_length=255, blank=True)
+    plazo_entrega = models.CharField(max_length=50, choices=PLAZO_CHOICES)
+    forma_pago = models.CharField(max_length=50, choices=PAGO_CHOICES)
+    precio_referencia = models.TextField(blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='Pendiente')
+
+    def __str__(self):
+        return f"Petición de {self.clinica} - {self.producto_valorado}"
+
+
+class OfertaDestacada(models.Model):
+    """Featured offer displayed on the home page. Managed via admin hub."""
+    titulo = models.CharField(max_length=200)
+    imagen = models.ImageField(upload_to='ofertas_destacadas/')
+    url_destino = models.URLField(blank=True, help_text='URL to redirect when clicking the offer button')
+    activa = models.BooleanField(default=True)
+    orden = models.IntegerField(default=0, help_text='Lower number = shown first')
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['orden', '-fecha_creacion']
+        verbose_name = 'Oferta Destacada'
+        verbose_name_plural = 'Ofertas Destacadas'
+
+    def __str__(self):
+        return self.titulo

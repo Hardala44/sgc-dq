@@ -1,136 +1,194 @@
-import React, { useState } from 'react';
-import { Tag, ChevronRight } from 'lucide-react';
-import type { ProductSearchResult, SupplierOffer } from '../types/marketplace';
-import { getPremiumImage } from '../utils/imageMapping';
+import React from 'react';
+import { ChevronRight } from 'lucide-react';
+import type { ProductSearchResult, SupplierOffer, LiveProduct } from '../types/marketplace';
 
 export type { ProductSearchResult as ProductoMarketplace, SupplierOffer as ProveedorOferta }; // For backwards compatibility
 
-interface MarketplaceProductCardProps {
+// ─── Standard DB product card props ───────────────────────────────────────────
+interface StandardCardProps {
   producto: ProductSearchResult;
   onClick: (producto: ProductSearchResult) => void;
   productIndex?: number;
+  isLive?: false;
+  liveProduct?: never;
+  onLiveClick?: never;
 }
 
-const MarketplaceProductCard: React.FC<MarketplaceProductCardProps> = ({ producto, onClick, productIndex = 0 }) => {
-  // Safe default fallback for suministros if undefined
-  const proveedoresList = producto.suministros || [];
+// ─── Live-scraped product card props ─────────────────────────────────────────
+interface LiveCardProps {
+  producto?: never;
+  onClick?: never;
+  productIndex?: number;
+  isLive: true;
+  liveProduct: LiveProduct;
+  /** Called when user clicks live result — triggers DB persistence */
+  onLiveClick: (liveProduct: LiveProduct) => void;
+}
+
+type MarketplaceProductCardProps = StandardCardProps | LiveCardProps;
+
+const MarketplaceProductCard: React.FC<MarketplaceProductCardProps> = (props) => {
+
+  // ── Live product card variant ──────────────────────────────────────────────
+  if (props.isLive && props.liveProduct) {
+    const { liveProduct, onLiveClick } = props;
+
+    return (
+      <article
+        onClick={() => onLiveClick(liveProduct)}
+        className="group relative bg-white border border-emerald-100/80 rounded-xl p-4 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all duration-300 cursor-pointer flex flex-col h-full gap-3"
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => e.key === 'Enter' && onLiveClick(liveProduct)}
+      >
+        {/* Category & Badge */}
+        <div className="flex items-start justify-end gap-2">
+          <div className="flex items-center gap-1 bg-emerald-500 text-white text-[8px] font-bold uppercase tracking-widest px-2 py-1 rounded shadow-sm shrink-0">
+            En Vivo
+          </div>
+        </div>
+
+        {/* Name & Brand */}
+        <div className="flex-1">
+          <h3 className="text-sm font-semibold text-slate-900 leading-snug line-clamp-2 group-hover:text-emerald-700 transition-colors">
+            {liveProduct.linea_producto}
+          </h3>
+          {liveProduct.marca && (
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1.5 block">
+              {liveProduct.marca}
+            </span>
+          )}
+        </div>
+
+        {/* Footer: Price & Provider */}
+        <div className="mt-auto pt-3 flex items-center justify-between border-t border-slate-100">
+          {/* Prices */}
+          {(liveProduct.precio_dq !== null || liveProduct.ahorro_pct > 0) && (
+            <div>
+              {liveProduct.precio_dq !== null ? (
+                <div className="flex flex-col">
+                  {liveProduct.precio_web != null && (
+                    <span className="text-[10px] text-slate-400 line-through leading-none">
+                      {liveProduct.precio_web.toFixed(2)}€
+                    </span>
+                  )}
+                  <div className="text-sm font-bold text-emerald-600 leading-tight">
+                    {liveProduct.precio_dq.toFixed(2)}€
+                  </div>
+                </div>
+              ) : (
+                <span className="text-[10px] font-medium text-slate-400">Consultar</span>
+              )}
+            </div>
+          )}
+          
+          <div className="flex items-center gap-2">
+            {liveProduct.ahorro_pct > 0 && (
+              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
+                -{liveProduct.ahorro_pct}%
+              </span>
+            )}
+            <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500 text-right max-w-[80px] truncate">
+              {liveProduct.proveedor_nombre}
+            </span>
+          </div>
+        </div>
+      </article>
+    );
+  }
+
+  // ── Standard DB product card ───────────────────────────────────────────────
+  const { producto, onClick } = props as StandardCardProps;
+
+  // Normalize suministros: backend may return flat objects (category-fallback)
+  // or nested {proveedor: {...}} objects (ProveedorOferta). Normalise to flat.
+  const rawList = (producto.suministros || producto.ofertas || []);
+  const proveedoresList = rawList.map(s => {
+    const isNested = s.proveedor && typeof s.proveedor === 'object';
+    return {
+      id: isNested ? s.proveedor.id : s.id,
+      nombre: isNested ? s.proveedor.nombre : (s.nombre ?? ''),
+      logo: isNested ? s.proveedor.logo : (s.logo ?? null),
+      url_compra: s.url_compra || '',
+      url_web: isNested ? s.proveedor.url_web : (s.url_web ?? ''),
+      stock_status: s.stock_status,
+      has_price: s.has_price ?? true,
+    };
+  });
+
   const MAX_LOGOS = 4;
   const visibleLogos = proveedoresList.slice(0, MAX_LOGOS);
   const overflowLogos = proveedoresList.length - MAX_LOGOS;
 
-  // ── Image resolution: DB url → fallback on error ─────────────────────────
-  const fallbackSrc = getPremiumImage(producto.nombre, productIndex);
-  const primarySrc = producto.imagen_url && producto.imagen_url.trim() !== ''
-    ? producto.imagen_url
-    : fallbackSrc;
-  const [imgSrc, setImgSrc] = useState<string>(primarySrc);
-
+      {/* ── Typographic Hero Area ── */}
   return (
     <article
       onClick={() => onClick(producto)}
-      className="group relative bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:border-slate-300 transition-all duration-300 cursor-pointer flex flex-col h-full"
+      className="group relative bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md hover:border-klein-300 transition-all duration-300 cursor-pointer flex flex-col h-full gap-3"
       role="button"
       tabIndex={0}
       onKeyDown={(e) => e.key === 'Enter' && onClick(producto)}
       aria-label={`Consultar suministro para ${producto.nombre}`}
     >
-      {/* ── Image Area ── */}
-      <div className="relative h-48 bg-slate-50 overflow-hidden flex-shrink-0">
-        <>
-          <img
-            src={imgSrc}
-            alt={producto.nombre}
-            loading="lazy"
-            className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-700"
-            onError={() => {
-              // If the DB url fails to load, silently switch to the fallback
-              if (imgSrc !== fallbackSrc) {
-                setImgSrc(fallbackSrc);
-              }
-            }}
-          />
-          {/* Dark scrim for better supplier logo legibility */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-80" />
-        </>
-
-        {/* Brand / Identifier Tag */}
+      {/* Category & Brand Header */}
+      <div className="flex items-start justify-end gap-2">
         {producto.marca && (
-            <div className="absolute top-3 left-3 bg-white/95 backdrop-blur shadow-sm px-2.5 py-1 rounded-full border border-white/20 z-10 text-[10px] uppercase font-bold tracking-widest text-slate-800">
-              {producto.marca}
-            </div>
+          <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 bg-white border border-slate-100 px-2 py-1 rounded shrink-0 max-w-[80px] truncate">
+            {producto.marca}
+          </span>
         )}
+      </div>
 
-        {/* Suppliers Logos Stack */}
-        <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2">
-            {/* Avatar stack */}
-            <div className="flex -space-x-2">
+      {/* Product Name */}
+      <div className="flex-1">
+        <h3 className="text-sm font-semibold text-slate-900 leading-snug line-clamp-2 group-hover:text-klein-600 transition-colors">
+          {producto.nombre}
+        </h3>
+      </div>
+
+      {/* Footer: Suppliers */}
+      <div className="mt-auto pt-3 flex items-center justify-between border-t border-slate-100">
+        <div className="flex items-center gap-2">
+            <div className="flex -space-x-1.5">
               {visibleLogos.map((prov, i) => (
                 <div
                   key={prov.id}
-                  className="w-6 h-6 rounded-full bg-white border border-white flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm"
+                  className="w-5 h-5 rounded-full bg-white border border-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm"
                   style={{ zIndex: 10 - i }}
-                  title={prov.proveedor.nombre}
+                  title={prov.nombre}
                 >
-                  {prov.proveedor.logo ? (
+                  {prov.logo ? (
                     <img
-                      src={prov.proveedor.logo}
-                      alt={prov.proveedor.nombre}
-                      className="w-full h-full object-contain p-0.5"
+                      src={prov.logo}
+                      alt={prov.nombre}
+                      className="w-full h-full object-contain p-[1px] bg-white"
                       onError={(e) => {
                         (e.target as HTMLImageElement).style.display = 'none';
                       }}
                     />
                   ) : (
-                    <span className="text-[8px] font-bold text-slate-600 leading-none select-none">
-                      {prov.proveedor.nombre.slice(0, 2).toUpperCase()}
+                    <span className="text-[7px] font-bold text-slate-600 leading-none select-none">
+                      {prov.nombre.slice(0, 2).toUpperCase()}
                     </span>
                   )}
                 </div>
               ))}
               {overflowLogos > 0 && (
                 <div
-                  className="w-6 h-6 rounded-full bg-slate-100 border border-white flex items-center justify-center flex-shrink-0 text-[9px] font-bold text-slate-500"
+                  className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center flex-shrink-0 text-[8px] font-bold text-slate-500"
                   style={{ zIndex: 0 }}
                 >
                   +{overflowLogos}
                 </div>
               )}
             </div>
-            {/* Distribuidor count */}
-            <span className="text-[9px] font-bold uppercase tracking-widest drop-shadow-sm text-white/90 drop-shadow-md">
-              {proveedoresList.length === 1 ? '1 distribuidor' : `${proveedoresList.length} distribuidores`}
+            <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
+              {proveedoresList.length === 1 ? '1 distribuidor' : `${proveedoresList.length} prov.`}
             </span>
         </div>
 
-        {/* Hover overlay action */}
-        <div className="absolute inset-0 bg-klein-900/0 group-hover:bg-klein-900/10 transition-colors duration-300 flex items-center justify-center z-20">
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white text-slate-900 text-[11px] font-bold uppercase tracking-widest px-4 py-2.5 rounded-full flex items-center gap-1.5 shadow-xl">
-            Consultar Suministros <ChevronRight size={14} />
-          </div>
-        </div>
-      </div>
-
-      {/* ── Content ── */}
-      <div className="flex flex-col flex-1 p-5 gap-2.5">
-        <div className="flex items-center gap-1.5">
-          <Tag size={10} className="text-slate-400 flex-shrink-0" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 truncate">
-            {producto.categoria_nombre}
-          </span>
-        </div>
-
-        <h3 className="text-sm font-semibold text-slate-900 leading-snug line-clamp-2 group-hover:text-klein-600 transition-colors">
-          {producto.nombre}
-        </h3>
-
-        {/* Footer ── minimal: just a directional cue */}
-        <div className="mt-auto pt-3 flex items-center justify-between border-t border-slate-100">
-          <span className="text-xs font-semibold text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            Ver proveedores
-          </span>
-          <div className="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-klein-50 group-hover:text-klein-600 transition-all duration-300 bg-slate-50 border border-slate-200 group-hover:border-klein-200 text-slate-400">
-            <ChevronRight size={14} />
-          </div>
+        <div className="w-6 h-6 rounded-full flex items-center justify-center group-hover:bg-klein-50 group-hover:text-klein-600 transition-all duration-300 bg-white border border-slate-200 text-slate-400 shrink-0">
+          <ChevronRight size={12} />
         </div>
       </div>
     </article>

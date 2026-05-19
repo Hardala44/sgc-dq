@@ -69,10 +69,6 @@ function formatPeriodLabel(periodStr: string): string {
     return `Q${first[1]} ${first[0]} – Q${last[1]} ${last[0]}`;
 }
 
-function isFullYear(selected: Array<[number, number]>, year: number): boolean {
-    const yearQuarters = selected.filter(([y]) => y === year).map(([, q]) => q).sort();
-    return yearQuarters.length === 4 && yearQuarters[0] === 1 && yearQuarters[3] === 4;
-}
 
 function isQuarterSelected(selected: Array<[number, number]>, year: number, quarter: number): boolean {
     return selected.some(([y, q]) => y === year && q === quarter);
