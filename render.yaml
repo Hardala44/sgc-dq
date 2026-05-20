@@ -38,8 +38,9 @@ services:
       - key: DJANGO_SUPERUSER_PASSWORD
         value: "dq12345!!"
 
-  - type: static
+  - type: web
     name: sgc-dq-frontend
+    runtime: static
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
