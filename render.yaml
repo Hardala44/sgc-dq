@@ -1,0 +1,55 @@
+databases:
+  - name: sgc-dq-db
+    plan: free
+    databaseName: sgc_dq
+    user: sgc_dq_user
+
+services:
+  - type: web
+    name: sgc-dq-backend
+    plan: free
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: >-
+      python manage.py migrate &&
+      python manage.py createsuperuser --noinput
+      --username $DJANGO_SUPERUSER_USERNAME
+      --email $DJANGO_SUPERUSER_EMAIL || true &&
+      python manage.py collectstatic --noinput &&
+      gunicorn sgc_dq.wsgi --bind 0.0.0.0:$PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sgc-dq-db
+          property: connectionString
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DEBUG
+        value: "false"
+      - key: DJANGO_ALLOWED_HOSTS
+        value: sgc-dq-backend.onrender.com
+      - key: CORS_ALLOWED_ORIGINS
+        value: "https://sgc-dq-frontend.onrender.com,https://sgc-dq.pages.dev"
+      - key: DJANGO_SUPERUSER_USERNAME
+        value: admin
+      - key: DJANGO_SUPERUSER_EMAIL
+        value: gabrielriospujado@gmail.com
+      - key: DJANGO_SUPERUSER_PASSWORD
+        value: "dq12345!!"
+
+  - type: web
+    name: sgc-dq-frontend
+    plan: free
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    pullRequestPreviewsEnabled: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://sgc-dq-backend.onrender.com/api
